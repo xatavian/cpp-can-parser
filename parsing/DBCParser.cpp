@@ -3,45 +3,73 @@
 #include <string>
 #include <iostream>
 #include <algorithm>
+#include "parsing/ParsingUtils.h"
+
 using namespace DBCParser;
 
-void skipIf(Tokenizer& tokenizer, const std::string& token) {
-  if(tokenizer.getNextToken().image() != token) {
-    throw CANDatabaseException(
-      "Syntax error: expected " +
-      token +
-      " but got " +
-      tokenizer.getCurrentToken().image() +
-      " at line " + std::to_string(tokenizer.lineCount())
-    );
+std::shared_ptr<CANSignal> parseSignal(Tokenizer& tokenizer);
+std::shared_ptr<CANFrame>  parseFrame(Tokenizer& tokenizer);
+std::set<std::string>      parseECUs(Tokenizer& tokenizer);
+void                       addBADirective(Tokenizer& tokenizer,
+                                                    CANDatabase& db);
+void                       addComment(Tokenizer& tokenizer, CANDatabase& db);
+
+void addComment(Tokenizer& tokenizer, CANDatabase& db) {
+  Token commentType;
+  Token commentValue;
+  Token targetFrame;
+  Token targetSignal;
+
+  assertToken(tokenizer, "CM_");
+  commentType = checkTokenType(tokenizer, Token::Identifier);
+
+  auto wWrongFrameId = [](const std::string& fId, unsigned long long line) {
+    warning("Frame " + fId + " does not exist", line);
+  };
+  if(commentType.image() == "SG_") {
+    targetFrame = checkTokenType(tokenizer, Token::Number);
+    targetSignal = checkTokenType(tokenizer, Token::Identifier);
+    commentValue = checkTokenType(tokenizer, Token::Literal);
+    skipIf(tokenizer, ";");
+
+    auto frame_id = targetFrame.toUInt();
+    if(!db.hasFrame(frame_id)) {
+      wWrongFrameId(targetFrame.image(), tokenizer.lineCount());
+      return;
+    }
+    else if(!db.getFrameById(frame_id).lock()->hasSignal(targetSignal.image())) {
+      warning("Frame " + targetFrame.image() +
+              "has no signal \"" + targetSignal.image() + "\"",
+            tokenizer.lineCount());
+      return;
+    }
+    db.getFrameById(frame_id).lock()
+      ->getSignalByName(targetSignal.image()).lock()
+      ->setComment(commentValue.image());
+  }
+  else if(commentType.image() == "BO_") {
+    targetFrame = checkTokenType(tokenizer, Token::Number);
+    commentValue = checkTokenType(tokenizer, Token::Literal);
+    skipIf(tokenizer, ";");
+
+    auto frame_id = targetFrame.toUInt();
+    if(!db.hasFrame(frame_id)) {
+      wWrongFrameId(targetFrame.image(), tokenizer.lineCount());
+      return;
+    } 
+
+    db.getFrameById(frame_id).lock()
+      ->setComment(commentValue.image());
+  }
+  else {
+    warning("Unsupported comment operation \"" +
+            commentType.image() + "\"",
+            tokenizer.lineCount());
+    tokenizer.skipUntil(";");
   }
 }
 
-void assertToken(const Tokenizer& tokenizer, const std::string& token) {
-  if(tokenizer.getCurrentToken().image() != token) {
-    throw CANDatabaseException(
-      "Syntax error: expected " +
-      token +
-      " but got " +
-      tokenizer.getCurrentToken().image() +
-      " at line " + std::to_string(tokenizer.lineCount())
-    );
-  }
-}
-
-Token checkTokenType(Tokenizer& tokenizer, Token::Type targetType) {
-  Token result = tokenizer.getNextToken();
-  if(result.type() != targetType) {
-    throw CANDatabaseException(
-      "Syntax error: unexpected \"" + result.image() +
-      "\" at line " + std::to_string(tokenizer.lineCount())
-    );
-  }
-
-  return result;
-}
-
-void addAdditionalInformation(Tokenizer& tokenizer, CANDatabase& db) {
+void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
   Token infoType;
   assertToken(tokenizer, "BA_");
 
@@ -53,14 +81,13 @@ void addAdditionalInformation(Tokenizer& tokenizer, CANDatabase& db) {
     skipIf(tokenizer, ";");
 
     if(period.image()[0] == '-') {
-      std::cout << "WARNING: cannot set negative period at line "
-                << tokenizer.lineCount() << std::endl;
+      warning("cannot set negative period",
+              tokenizer.lineCount());
       return;
     }
     else if(frameId.image()[0] == '-') {
-      std::cout << "WARNING: cannot set period for a frame with a "
-                << "negative frame id at line " << tokenizer.lineCount()
-                << std::endl;
+      warning("invalid frame id",
+              tokenizer.lineCount());
       return;
     }
 
@@ -114,11 +141,11 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
                 << std::endl;
     }
     else if(currentToken.image() == "CM_") {
-      tokenizer.skipLine();
+      addComment(tokenizer, result);
       // TODO: Handle comments
     }
     else if(currentToken.image() == "BA_") {
-      addAdditionalInformation(tokenizer, result);
+      addBADirective(tokenizer, result);
     }
 
     currentToken = tokenizer.getNextToken();
@@ -127,18 +154,10 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
   return result;
 }
 
-std::shared_ptr<CANSignal> DBCParser::parseSignal(Tokenizer& tokenizer) {
-  Token signalName;
-  Token startBit;
-  Token length;
-  Token endianess;
-  Token signedness;
-  Token scale;
-  Token offset;
-  Token min;
-  Token max;
-  Token unit;
-  Token targetECU;
+std::shared_ptr<CANSignal> parseSignal(Tokenizer& tokenizer) {
+  Token signalName, startBit, length,
+        endianess, signedness, scale,
+        offset, min, max, unit, targetECU;
 
   assertToken(tokenizer, "SG_");
 
@@ -175,7 +194,7 @@ std::shared_ptr<CANSignal> DBCParser::parseSignal(Tokenizer& tokenizer) {
   );
 }
 
-std::shared_ptr<CANFrame> DBCParser::parseFrame(Tokenizer& tokenizer) {
+std::shared_ptr<CANFrame> parseFrame(Tokenizer& tokenizer) {
   Token name;
   Token id;
   Token dlc;
@@ -210,7 +229,7 @@ std::shared_ptr<CANFrame> DBCParser::parseFrame(Tokenizer& tokenizer) {
   return result;
 }
 
-std::set<std::string> DBCParser::parseECUs(Tokenizer& tokenizer) {
+std::set<std::string> parseECUs(Tokenizer& tokenizer) {
   std::set<std::string> result;
 
   assertToken(tokenizer, "BU_");

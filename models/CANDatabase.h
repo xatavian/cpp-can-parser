@@ -21,9 +21,12 @@ public:
   std::weak_ptr<CANFrame> getFrameByName(const std::string& name) const;
   std::vector<std::weak_ptr<CANFrame>> frames() const;
 
+  bool hasFrame(unsigned int can_id) const;
+  bool hasFrame(const std::string& name) const;
+
   const std::string& filename() const;
   std::size_t size() const;
-  
+
   void addFrame(std::shared_ptr<CANFrame> frame);
   void removeFrame(unsigned int idx);
   void removeFrame(const std::string& name);

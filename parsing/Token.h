@@ -23,10 +23,23 @@ public:
   Type type() const {
     return type_;
   }
+
   const std::string& image() const {
     return image_;
   }
 
+  unsigned long long toUInt() const {
+    return std::stoul(image_);
+  }
+
+  long long toInt() const {
+    return std::stol(image_);
+  }
+
+  double toDouble() const {
+    return std::stof(image_);
+  }
+  
 private:
   Type type_;
   std::string image_;

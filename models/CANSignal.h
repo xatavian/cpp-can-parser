@@ -50,6 +50,10 @@ public:
     return length_;
   }
 
+  const std::string& comment() const {
+    return comment_;
+  }
+
   int scale() const {
     return scale_;
   }
@@ -70,6 +74,9 @@ public:
     return endianness_;
   }
 
+  void setComment(const std::string& comment) {
+    comment_ = comment;
+  }
 private:
   std::string name_;
   unsigned int start_bit_;
@@ -79,6 +86,7 @@ private:
   Signedness signedness_;
   Endianness endianness_;
   Range range_;
+  std::string comment_;
 };
 
 #endif

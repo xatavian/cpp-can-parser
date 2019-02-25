@@ -26,6 +26,14 @@ void CANFrame::setPeriod(unsigned int val) {
   period_ = val;
 }
 
+void CANFrame::setComment(const std::string& comment) {
+  comment_ = comment;
+}
+
+bool CANFrame::hasSignal(const std::string& name) const {
+  return strIndex_.find(name) != strIndex_.end();
+}
+
 std::weak_ptr<CANSignal> CANFrame::getSignalByName(const std::string& name) const {
   std::weak_ptr<CANSignal> result;
 

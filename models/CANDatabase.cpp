@@ -93,3 +93,11 @@ void CANDatabase::removeFrame(unsigned int can_id) {
   intIndex_.erase(ite); // No need for a second lookup
   strIndex_.erase(strIndex_.find(strIdx));
 }
+
+bool CANDatabase::hasFrame(unsigned int can_id) const {
+  return intIndex_.find(can_id) != intIndex_.end();
+}
+
+bool CANDatabase::hasFrame(const std::string& name) const {
+  return strIndex_.find(name) != strIndex_.end();
+}
