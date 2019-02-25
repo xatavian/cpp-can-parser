@@ -11,8 +11,10 @@ std::shared_ptr<CANSignal> parseSignal(Tokenizer& tokenizer);
 std::shared_ptr<CANFrame>  parseFrame(Tokenizer& tokenizer);
 std::set<std::string>      parseECUs(Tokenizer& tokenizer);
 void                       addBADirective(Tokenizer& tokenizer,
-                                                    CANDatabase& db);
+                                          CANDatabase& db);
 void                       addComment(Tokenizer& tokenizer, CANDatabase& db);
+void                       parseSignalChoices(Tokenizer& tokenizer,
+                                           CANDatabase& db);
 
 void addComment(Tokenizer& tokenizer, CANDatabase& db) {
   Token commentType;
@@ -56,7 +58,7 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
     if(!db.hasFrame(frame_id)) {
       wWrongFrameId(targetFrame.image(), tokenizer.lineCount());
       return;
-    } 
+    }
 
     db.getFrameById(frame_id).lock()
       ->setComment(commentValue.image());
@@ -74,7 +76,7 @@ void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
   assertToken(tokenizer, "BA_");
 
   infoType = checkTokenType(tokenizer, Token::Literal);
-  if(infoType.image() == "\"GenMsgCycleTime\"") {
+  if(infoType.image() == "GenMsgCycleTime") {
     skipIf(tokenizer, "BO_");
     Token frameId = checkTokenType(tokenizer, Token::Number);
     Token period = checkTokenType(tokenizer, Token::Number);
@@ -147,7 +149,9 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
     else if(currentToken.image() == "BA_") {
       addBADirective(tokenizer, result);
     }
-
+    else if(currentToken.image() == "VAL_") {
+      parseSignalChoices(tokenizer, result);
+    }
     currentToken = tokenizer.getNextToken();
   }
 
@@ -249,4 +253,48 @@ std::set<std::string> parseECUs(Tokenizer& tokenizer) {
     tokenizer.saveToken(currentToken);
 
   return result;
+}
+
+void parseSignalChoices(Tokenizer& tokenizer, CANDatabase& db) {
+  Token targetFrame;
+  Token targetSignal;
+  Token currentVal;
+  Token currentLabel;
+
+  std::map<unsigned int, std::string> targetChoices;
+
+  assertToken(tokenizer, "VAL_");
+  targetFrame = checkTokenType(tokenizer, Token::Number);
+  targetSignal = checkTokenType(tokenizer, Token::Identifier);
+
+  Token currentToken = tokenizer.getNextToken();
+  while(currentToken.image() != ";" &&
+        currentToken.type() != Token::Eof) {
+    currentVal = checkCurrentTokenType(currentToken, Token::Number,
+                                       tokenizer.lineCount());
+    currentLabel = checkTokenType(tokenizer, Token::Literal);
+
+    targetChoices.insert(
+      std::make_pair(
+        currentVal.toUInt(),
+        currentLabel.image()
+      )
+    );
+
+    currentToken = tokenizer.getNextToken();
+  }
+  checkCurrentTokenType(currentToken, ";", tokenizer.lineCount());
+
+  unsigned long long frame_id = targetFrame.toUInt();
+  if(!db.hasFrame(frame_id) ||
+     !db.getFrameById(frame_id).lock()->hasSignal(targetSignal.image())) {
+    warning("Cannot assign enum to signal \"" + targetFrame.image() + "/" +
+            targetSignal.image() + "\"",
+            tokenizer.lineCount());
+    return;
+  }
+
+  db.getFrameById(frame_id).lock()
+    ->getSignalByName(targetSignal.image()).lock()
+    ->setChoices(targetChoices);
 }

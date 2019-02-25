@@ -45,20 +45,41 @@ void assertToken(const Tokenizer& tokenizer, const std::string& token) {
   );
 }
 
-Token checkTokenType(Tokenizer& tokenizer, Token::Type targetType) {
-  Token result = tokenizer.getNextToken();
-  if(result.type() == targetType)
-    return result;
+
+Token checkCurrentTokenType(const Token& toCheck, Token::Type targetType,
+                            unsigned long long line) {
+  if(toCheck.type() == targetType)
+    return toCheck;
 
   throwError(
     "Syntax error",
-    "unexpected \"" + result.image() + "\"",
-    tokenizer.lineCount()
+    "unexpected \"" + toCheck.image() + "\"",
+    line
   );
 
-  // Never reached but it removes a compilation warning
-  return result;
+  // Removes a compilation warning
+  return toCheck;
 }
 
+Token checkCurrentTokenType(const Token& toCheck,
+                            const std::string& token,
+                            unsigned long long line) {
+  if(toCheck.image() == token)
+    return toCheck;
 
+  throwError(
+    "Syntax error",
+    "unexpected \"" + toCheck.image() + "\"",
+    line
+  );
+
+  // Removes a compilation warning
+  return toCheck;
+}
+
+Token checkTokenType(Tokenizer& tokenizer, Token::Type targetType) {
+  return checkCurrentTokenType(tokenizer.getNextToken(),
+                               targetType,
+                               tokenizer.lineCount());
+}
 #endif

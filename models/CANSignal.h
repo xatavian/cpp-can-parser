@@ -74,9 +74,18 @@ public:
     return endianness_;
   }
 
+  const std::map<unsigned int, std::string>& choices() const {
+    return choices_;
+  }
+
   void setComment(const std::string& comment) {
     comment_ = comment;
   }
+
+  void setChoices(const std::map<unsigned int, std::string>& choices) {
+    choices_ = choices;
+  }
+
 private:
   std::string name_;
   unsigned int start_bit_;
@@ -87,6 +96,7 @@ private:
   Endianness endianness_;
   Range range_;
   std::string comment_;
+  std::map<unsigned int, std::string> choices_;
 };
 
 #endif

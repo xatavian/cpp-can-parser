@@ -106,7 +106,7 @@ Token Tokenizer::getNextToken() {
     }
   }
   else if(currentChar == '\"') {
-    std::string literal = std::string(1, currentChar);
+    std::string literal = ""; // std::string(1, currentChar);
     currentChar = getNextChar();
 
     while(currentChar != '\"' && !isEOF(currentChar)) {
@@ -115,7 +115,7 @@ Token Tokenizer::getNextToken() {
     }
 
     if(currentChar == '\"') {
-      literal += currentChar;
+      // literal += currentChar;
       currentChar = getNextChar();
     }
     else {
