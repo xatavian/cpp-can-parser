@@ -1,5 +1,5 @@
 #include "Tokenizer.h"
-#include "models/CANDatabaseException.h"
+#include "CANDatabaseException.h"
 #include <cctype>
 #include <iostream>
 

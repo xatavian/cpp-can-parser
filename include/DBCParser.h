@@ -1,8 +1,8 @@
 #ifndef DBCParser_H
 #define DBCParser_H
 
-#include "models/CANDatabase.h"
-#include "parsing/Tokenizer.h"
+#include "CANDatabase.h"
+#include "Tokenizer.h"
 #include <set>
 #include <memory>
 

@@ -1,10 +1,10 @@
 #ifndef ParsingUtils_H
 #define ParsingUtils_H
 
-#include "parsing/Tokenizer.h"
+#include "Tokenizer.h"
 #include <string>
 #include <iostream>
-#include "models/CANDatabaseException.h"
+#include "CANDatabaseException.h"
 
 void throwError(const std::string& category, const std::string& description,
                 unsigned long long line) {

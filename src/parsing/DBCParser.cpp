@@ -1,9 +1,9 @@
-#include "parsing/DBCParser.h"
-#include "models/CANDatabaseException.h"
+#include "DBCParser.h"
+#include "CANDatabaseException.h"
 #include <string>
 #include <iostream>
 #include <algorithm>
-#include "parsing/ParsingUtils.h"
+#include "ParsingUtils.h"
 
 using namespace DBCParser;
 

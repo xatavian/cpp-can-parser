@@ -1,5 +1,5 @@
 #include "CANDatabase.h"
-#include "parsing/DBCParser.h"
+#include "DBCParser.h"
 #include <utility>
 #include <iostream>
 

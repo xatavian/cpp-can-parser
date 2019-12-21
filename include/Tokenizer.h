@@ -4,7 +4,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include "parsing/Token.h"
+#include "Token.h"
 
 class Tokenizer {
 public:

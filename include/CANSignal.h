@@ -54,11 +54,11 @@ public:
     return comment_;
   }
 
-  int scale() const {
+  double scale() const {
     return scale_;
   }
 
-  int offset() const {
+  double offset() const {
     return offset_;
   }
 
