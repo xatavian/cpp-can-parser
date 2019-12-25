@@ -35,17 +35,17 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
     skipIf(tokenizer, ";");
 
     auto frame_id = targetFrame.toUInt();
-    if(!db.hasFrame(frame_id)) {
+    if(!db.contains(frame_id)) {
       wWrongFrameId(targetFrame.image(), tokenizer.lineCount());
       return;
     }
-    else if(!db.getFrameById(frame_id).lock()->hasSignal(targetSignal.image())) {
+    else if(!db.at(frame_id).lock()->hasSignal(targetSignal.image())) {
       warning("Frame " + targetFrame.image() +
               "has no signal \"" + targetSignal.image() + "\"",
             tokenizer.lineCount());
       return;
     }
-    db.getFrameById(frame_id).lock()
+    db.at(frame_id).lock()
       ->getSignalByName(targetSignal.image()).lock()
       ->setComment(commentValue.image());
   }
@@ -55,12 +55,12 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
     skipIf(tokenizer, ";");
 
     auto frame_id = targetFrame.toUInt();
-    if(!db.hasFrame(frame_id)) {
+    if(!db.contains(frame_id)) {
       wWrongFrameId(targetFrame.image(), tokenizer.lineCount());
       return;
     }
 
-    db.getFrameById(frame_id).lock()
+    db.at(frame_id).lock()
       ->setComment(commentValue.image());
   }
   else {
@@ -96,7 +96,7 @@ void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
     unsigned int iFrameId = std::stoul(frameId.image());
     unsigned int iPeriod = std::stoul(period.image());
 
-    auto frame = db.getFrameById(iFrameId);
+    auto frame = db.at(iFrameId);
     if(frame.expired()) {
       std::cout << "WARNING: frame " << iPeriod << " does not exist "
                 << "at line " << tokenizer.lineCount()
@@ -111,6 +111,10 @@ void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
               << std::endl;
     tokenizer.skipUntil(";");
   }
+}
+
+CANDatabase DBCParser::fromTokenizer(Tokenizer& tokenizer) {
+  return fromTokenizer("", tokenizer);
 }
 
 CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokenizer) {
@@ -286,15 +290,15 @@ void parseSignalChoices(Tokenizer& tokenizer, CANDatabase& db) {
   checkCurrentTokenType(currentToken, ";", tokenizer.lineCount());
 
   unsigned long long frame_id = targetFrame.toUInt();
-  if(!db.hasFrame(frame_id) ||
-     !db.getFrameById(frame_id).lock()->hasSignal(targetSignal.image())) {
+  if(!db.contains(frame_id) ||
+     !db.at(frame_id).lock()->hasSignal(targetSignal.image())) {
     warning("Cannot assign enum to signal \"" + targetFrame.image() + "/" +
             targetSignal.image() + "\"",
             tokenizer.lineCount());
     return;
   }
 
-  db.getFrameById(frame_id).lock()
+  db.at(frame_id).lock()
     ->getSignalByName(targetSignal.image()).lock()
     ->setChoices(targetChoices);
 }

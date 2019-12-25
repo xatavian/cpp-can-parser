@@ -9,6 +9,8 @@
 namespace DBCParser {
   CANDatabase fromTokenizer(const std::string& name,
                             Tokenizer& tokenizer);
+
+  CANDatabase fromTokenizer(Tokenizer& tokenizer);
 };
 
 #endif

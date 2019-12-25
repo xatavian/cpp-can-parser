@@ -3,26 +3,37 @@
 #include <cctype>
 #include <iostream>
 
-char Tokenizer::getNextChar() {
-  if(eofReached)
-    return 0;
+bool isSpace(char c) {
+  return  std::isspace((unsigned char)c);
+}
 
-  char result;
-  inputstream.get(result);
+bool isSeparator(char c) {
+  return c == '[' || c == ']' || c == '|' || c == ':' || c == '@' ||
+    c == ')' || c == '(' || c == ',' || c == ';';
+}
 
-  charCnt += 1;
-  if(addLine) {
-    lineCnt += 1;
-    addLine = false;
-  }
-  if(result == '\n') {
-    addLine = true;
-  }
+bool isDigit(char c) {
+  return std::isdigit((unsigned char)c);
+}
 
-  if(inputstream.eof())
-    eofReached = true;
+bool isIdentifierStart(char c) {
+  return std::isalpha((unsigned char)c) || c == '_';
+}
 
-  return result;
+bool isIdentifierPart(char c) {
+  return isIdentifierStart(c) || isDigit(c);
+}
+
+bool isEOF(char c) {
+  return c == '\0';
+}
+
+Token Tokenizer::getCurrentToken() const {
+  return currentToken;
+}
+
+char Tokenizer::getCurrentChar() const {
+  return currentChar;
 }
 
 unsigned long long Tokenizer::charCount() const {
@@ -33,88 +44,72 @@ unsigned long long Tokenizer::lineCount() const {
   return lineCnt;
 }
 
-bool Tokenizer::isSpace(char c) const {
-  return  std::isspace( (unsigned char) c);
-}
-
-bool Tokenizer::isSeparator(char c) const {
-  return c == '[' || c == ']' || c == '|' || c == ':' || c == '@' ||
-         c == ')' || c == '(' || c == ',' || c == ';';
-}
-
-bool Tokenizer::isDigit(char c) const {
-  return std::isdigit( (unsigned char) c);
-}
-
-bool Tokenizer::isIdentifierStart(char c) const {
-  return std::isalpha( (unsigned char) c) || c == '_';
-}
-
-bool Tokenizer::isIdentifierPart(char c) const {
-  return isIdentifierStart(c) || isDigit(c);
-}
-
-bool Tokenizer::isEOF(char c) const {
-  return c == '\0';
-}
-
-Token Tokenizer::getCurrentToken() const {
-  return currentToken;
-}
+Tokenizer::Tokenizer() :
+  currentChar(0), currentToken(), started(false), addLine(false),
+  charCnt(0), lineCnt(0) {}
 
 void Tokenizer::saveToken(const Token& token) {
   tokenStack.push_back(token);
 }
 
+char Tokenizer::getCurrentChar() const {
+  return currentChar;
+}
+
+char Tokenizer::getNextChar() {
+  currentChar = doGetNextChar();
+  return currentChar;
+}
+
 Token Tokenizer::getNextToken() {
-  if(tokenStack.size() > 0) {
+  if (tokenStack.size() > 0) {
     Token result = tokenStack.back();
     tokenStack.pop_back();
     return result;
   }
 
-  if(!started) {
+  if (!started) {
     currentChar = getNextChar();
     started = true;
   }
 
-  while(isSpace(currentChar))
+  while (isSpace(currentChar))
     currentChar = getNextChar();
 
-  if(isEOF(currentChar)) {
+  if (isEOF(currentChar)) {
     currentToken = Token(Token::Eof, "");
   }
-  else if(isSeparator(currentChar)) {
+  else if (isSeparator(currentChar)) {
     currentToken = Token(Token::Separator, std::string(1, currentChar));
     currentChar = getNextChar();
   }
-  else if(currentChar == '+') {
+  else if (currentChar == '+') {
     currentToken = Token(Token::Sign, std::string(1, currentChar));
     currentChar = getNextChar();
   }
-  else if(currentChar == '-') {
+  else if (currentChar == '-') {
     currentChar = getNextChar();
-    if(!isDigit(currentChar))
+    if (!isDigit(currentChar))
       currentToken = Token(Token::Sign, "-");
     else { // Negative number
       std::string literal = "-";
-      while(isDigit(currentChar) || currentChar == '.') {
+      while (isDigit(currentChar) || currentChar == '.') {
         literal += currentChar;
         currentChar = getNextChar();
       }
       currentToken = Token(Token::Number, literal);
     }
   }
-  else if(currentChar == '\"') {
+  else if (currentChar == '\"') {
     std::string literal = ""; // std::string(1, currentChar);
     currentChar = getNextChar();
 
-    while(currentChar != '\"' && !isEOF(currentChar)) {
+    while (currentChar != '\"' && !isEOF(currentChar)) {
       literal += currentChar;
       currentChar = getNextChar();
     }
 
-    if(currentChar == '\"') {
+    if (currentChar == '\"') {
       // literal += currentChar;
       currentChar = getNextChar();
     }
@@ -124,22 +119,22 @@ Token Tokenizer::getNextToken() {
 
     currentToken = Token(Token::Literal, literal);
   }
-  else if(isDigit(currentChar)) {
+  else if (isDigit(currentChar)) {
     std::string literal = std::string(1, currentChar);
     currentChar = getNextChar();
 
-    while(isDigit(currentChar) || currentChar == '.') {
+    while (isDigit(currentChar) || currentChar == '.') {
       literal += currentChar;
       currentChar = getNextChar();
     }
 
     currentToken = Token(Token::Number, literal);
   }
-  else if(isIdentifierStart(currentChar)) {
+  else if (isIdentifierStart(currentChar)) {
     std::string identifier = std::string(1, currentChar);
     currentChar = getNextChar();
 
-    while(isIdentifierPart(currentChar)) {
+    while (isIdentifierPart(currentChar)) {
       identifier += currentChar;
       currentChar = getNextChar();
     }
@@ -188,4 +183,52 @@ void Tokenizer::skipUntil(const std::string& token) {
       " the parsing has failed"
     );
   }
+}
+
+FileTokenizer::FileTokenizer(const std::string& filename)
+  : Tokenizer(), inputstream(filename) {
+
+}
+
+char FileTokenizer::doGetNextChar() {
+  if (inputstream.eof() == std::ifstream::traits_type::eof())
+    return 0;
+
+  char result;
+  inputstream.get(result);
+
+  charCnt += 1;
+  if (addLine) {
+    lineCnt += 1;
+    addLine = false;
+  }
+  if (result == '\n') {
+    addLine = true;
+  }
+
+  return result;
+}
+
+
+StringTokenizer::StringTokenizer(const std::string& src_string)
+  : Tokenizer(), src_str(src_string) {
+
+}
+
+char StringTokenizer::doGetNextChar() {
+  if (charCnt >= src_str.size())
+    return 0;
+
+  char result = src_str[charCnt++];
+  
+  if (addLine) {
+    lineCnt += 1;
+    addLine = false;
+  }
+
+  if (result = '\n') {
+    addLine = true;
+  }
+
+  return result;
 }

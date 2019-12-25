@@ -15,16 +15,21 @@ std::size_t CANDatabase::size() const {
 }
 
 CANDatabase CANDatabase::fromFile(const std::string& filename) {
-  Tokenizer tokenizer(filename);
-
-  if(!tokenizer.is_valid()) {
+  std::ifstream test_stream(filename);
+  if (!test_stream.good()) {
     throw CANDatabaseException("Cannot find file " + filename);
   }
-
+  
+  FileTokenizer tokenizer(filename);
   return DBCParser::fromTokenizer(filename, tokenizer);
 }
 
-std::weak_ptr<CANFrame> CANDatabase::getFrameByName(const std::string& name) const {
+CANDatabase CANDatabase::fromString(const std::string & src_string) {
+  StringTokenizer tokenizer(src_string);
+  return DBCParser::fromTokenizer(tokenizer);
+}
+
+std::weak_ptr<CANFrame> CANDatabase::at(const std::string& name) const {
   std::weak_ptr<CANFrame> result;
 
   auto ite = strIndex_.find(name);
@@ -34,23 +39,13 @@ std::weak_ptr<CANFrame> CANDatabase::getFrameByName(const std::string& name) con
   return result;
 }
 
-std::weak_ptr<CANFrame> CANDatabase::getFrameById(unsigned int id) const {
+std::weak_ptr<CANFrame> CANDatabase::at(unsigned int id) const {
   std::weak_ptr<CANFrame> result;
 
   auto ite = intIndex_.find(id);
   if(ite != intIndex_.end())
     result = ite->second;
 
-  return result;
-}
-
-std::vector<std::weak_ptr<CANFrame>> CANDatabase::frames() const {
-  std::vector<std::weak_ptr<CANFrame>> result;
-  result.reserve(intIndex_.size());
-
-  for(const auto& sigIte: intIndex_) {
-    result.emplace_back(sigIte.second);
-  }
   return result;
 }
 
@@ -94,10 +89,75 @@ void CANDatabase::removeFrame(unsigned int can_id) {
   strIndex_.erase(strIndex_.find(strIdx));
 }
 
-bool CANDatabase::hasFrame(unsigned int can_id) const {
+bool CANDatabase::contains(unsigned int can_id) const {
   return intIndex_.find(can_id) != intIndex_.end();
 }
 
-bool CANDatabase::hasFrame(const std::string& name) const {
+bool CANDatabase::contains(const std::string& name) const {
   return strIndex_.find(name) != strIndex_.end();
+}
+
+CANDatabase::iterator 
+CANDatabase::begin() {
+  return intIndex_.begin();
+}
+
+CANDatabase::const_iterator 
+CANDatabase::begin() const {
+  return intIndex_.begin();
+}
+
+CANDatabase::const_iterator
+CANDatabase::cbegin() const {
+  return intIndex_.cbegin();
+}
+
+CANDatabase::iterator 
+CANDatabase::end() {
+  return intIndex_.end();
+}
+
+CANDatabase::const_iterator 
+CANDatabase::end() const {
+  return intIndex_.end();
+}
+
+CANDatabase::const_iterator
+CANDatabase::cend() const {
+  return intIndex_.cend();
+}
+
+CANDatabase::reverse_iterator 
+CANDatabase::rbegin() {
+  return intIndex_.rbegin();
+}
+
+CANDatabase::const_reverse_iterator 
+CANDatabase::rbegin() const {
+  return intIndex_.rbegin();
+}
+
+CANDatabase::const_reverse_iterator
+CANDatabase::crbegin() const {
+  return intIndex_.crbegin();
+}
+
+CANDatabase::reverse_iterator 
+CANDatabase::rend() {
+  return intIndex_.rend();
+}
+
+CANDatabase::const_reverse_iterator 
+CANDatabase::rend() const {
+  return intIndex_.rend();
+}
+
+CANDatabase::const_reverse_iterator
+CANDatabase::crend() const {
+  return intIndex_.crend();
+}
+
+void CANDatabase::clear() {
+  intIndex_.clear();
+  strIndex_.clear();
 }

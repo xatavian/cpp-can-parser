@@ -8,16 +8,12 @@
 
 class Tokenizer {
 public:
-  Tokenizer(const std::string& filename) :
-    inputstream(filename), currentChar(0), currentToken(), started(false), eofReached(false), addLine(false),
-    charCnt(0), lineCnt(0) {}
-
-  bool is_valid() const {
-    return inputstream.is_open();
-  }
-
+  Tokenizer();
+  virtual ~Tokenizer() = default;
+  
   Token getNextToken();
   Token getCurrentToken() const;
+  
   void skipLine();
   void skipUntil(const std::string& token);
   void saveToken(const Token& token);
@@ -25,27 +21,43 @@ public:
   unsigned long long charCount() const;
   unsigned long long lineCount() const;
 
-private:
+protected:
   char getNextChar();
+  char getCurrentChar() const;
+  
+private:
+  virtual char doGetNextChar() = 0;
 
 private:
-  bool isSeparator(char c) const;
-  bool isEOF(char c) const;
-  bool isDigit(char c) const;
-  bool isSpace(char c) const;
-  bool isIdentifierStart(char c) const;
-  bool isIdentifierPart(char c) const;
-
-private:
-  std::ifstream inputstream;
   char currentChar;
   Token currentToken;
   std::vector<Token> tokenStack;
   bool started;
-  bool eofReached;
-  bool addLine;
+
+protected:
   unsigned long long charCnt;
   unsigned long long lineCnt;
+  bool addLine;
 };
 
+class FileTokenizer : public Tokenizer {
+public:
+  FileTokenizer(const std::string& filename);
+
+  virtual char doGetNextChar();
+
+private:
+  std::ifstream inputstream;
+
+};
+
+class StringTokenizer : public Tokenizer {
+public:
+  StringTokenizer(const std::string& src_string);
+
+  virtual char doGetNextChar();
+
+private:
+  std::string src_str;
+};
 #endif
