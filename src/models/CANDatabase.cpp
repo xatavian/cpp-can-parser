@@ -6,6 +6,32 @@
 CANDatabase::CANDatabase(const std::string& filename)
   : filename_(filename), strIndex_(), intIndex_() { }
 
+CANDatabase::CANDatabase(const CANDatabase& src):
+  filename_(src.filename_), strIndex_(), intIndex_() {
+
+  for (const auto& frame : src) {
+    auto copy = std::make_shared<CANFrame>(frame);
+    intIndex_.insert(std::make_pair(frame.second->can_id(), copy));
+    strIndex_.insert(std::make_pair(frame.second->name(), copy));
+  }
+}
+
+CANDatabase & CANDatabase::operator=(CANDatabase src) {
+  swap(*this, src);
+  return *this;
+}
+
+CANDatabase::CANDatabase(CANDatabase && src)
+  : filename_(), strIndex_(), intIndex_() {
+
+  swap(*this, src);
+}
+
+CANDatabase & CANDatabase::operator=(CANDatabase && src) {
+  swap(*this, src);
+  return *this;
+}
+
 const std::string& CANDatabase::filename() const {
   return filename_;
 }
@@ -160,4 +186,10 @@ CANDatabase::crend() const {
 void CANDatabase::clear() {
   intIndex_.clear();
   strIndex_.clear();
+}
+
+void swap(CANDatabase & first, CANDatabase & second) {
+  std::swap(first.intIndex_, second.intIndex_);
+  std::swap(first.strIndex_, second.strIndex_);
+  std::swap(first.filename_, second.filename_);
 }

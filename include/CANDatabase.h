@@ -40,6 +40,15 @@ public:
   static CANDatabase fromString(const std::string& src_string);
 
 public:
+  using container_type = std::map<unsigned int, std::shared_ptr<CANFrame>>;
+  using str_container_type = std::map<std::string, std::shared_ptr<CANFrame>>;
+  
+  using iterator = container_type::iterator;
+  using const_iterator = container_type::const_iterator;
+  using reverse_iterator = container_type::reverse_iterator;
+  using const_reverse_iterator = container_type::const_reverse_iterator;
+
+public:
   /**
    * @brief Creates a CANDatabase object with no source file
    */
@@ -50,6 +59,29 @@ public:
    * @param filename Name of the source file 
    */
   CANDatabase(const std::string& filename);
+
+  /**
+   * Creates a copy of the database: the individual frames are deep copied so there is no
+   * shared memory betwwen the two databases.
+   */
+  CANDatabase(const CANDatabase&);
+
+  /**
+   * @brief Makes a copy of the given database
+   * Note: the source database is passed-by-value for RVO
+   *       (see https://stackoverflow.com/a/3279550/8147455 for more info)
+   */
+  CANDatabase& operator=(CANDatabase);
+
+  /**
+   * @brief Moves a CANDatabase object. The CANFrame objects are NOT deep copied.
+   */
+  CANDatabase(CANDatabase&&);
+
+  /**
+   * @see CANDatabase(const CANDatabase&&)
+   */
+  CANDatabase& operator=(CANDatabase&&);
 
 public:
   /**
@@ -84,6 +116,10 @@ public:
   bool contains(const std::string& frame_name) const;
 
   /**
+   * @brief Swaps the content of the two given databases
+   */
+  friend void swap(CANDatabase& first, CANDatabase& second);
+  /**
    * @return File name of the source file if the database was constructed from a file.
    *         Otherwise, returns an empty string.
    */
@@ -96,13 +132,6 @@ public:
      
      The iterators have a random order. */
 public:
-  using container_type = std::map<unsigned int, std::shared_ptr<CANFrame>>;
-  using str_container_type = std::map<std::string, std::shared_ptr<CANFrame>>;
-  using iterator = container_type::iterator;
-  using const_iterator = container_type::const_iterator;
-  using reverse_iterator = container_type::reverse_iterator;
-  using const_reverse_iterator = container_type::const_reverse_iterator;
-
   iterator begin();
   const_iterator begin() const;
   const_iterator cbegin() const;
