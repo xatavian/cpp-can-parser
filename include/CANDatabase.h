@@ -40,7 +40,7 @@ public:
   static CANDatabase fromString(const std::string& src_string);
 
 public:
-  using container_type = std::map<unsigned int, std::shared_ptr<CANFrame>>;
+  using container_type = std::map<unsigned long long, std::shared_ptr<CANFrame>>;
   using str_container_type = std::map<std::string, std::shared_ptr<CANFrame>>;
   
   using iterator = container_type::iterator;
@@ -87,28 +87,28 @@ public:
   /**
    * @brief Get the frame with the given frame name
    */
-  std::weak_ptr<CANFrame> at(unsigned int frame_name) const;
+  std::shared_ptr<CANFrame> at(unsigned long long frame_name) const;
   
   /**
    * @brief Get the frame with the given frame id
    */
-  std::weak_ptr<CANFrame> at(const std::string& frame_name) const;
+  std::shared_ptr<CANFrame> at(const std::string& frame_name) const;
 
   /**
    * @brief Get the frame with the given frame id
    * @see getFrame
    */
-  std::weak_ptr<CANFrame> operator[](unsigned int frame_idx) const;
+  std::shared_ptr<CANFrame> operator[](unsigned long long frame_idx) const;
   
   /**
    * @brief Get the frame with the given frame name
    */
-  std::weak_ptr<CANFrame> operator[](const std::string& frame_name) const;
+  std::shared_ptr<CANFrame> operator[](const std::string& frame_name) const;
 
   /**
    * @return true if the CANDatabase contains a frame with the given frame id
    */
-  bool contains(unsigned int frame_id) const;
+  bool contains(unsigned long long can_id) const;
 
   /**
    * @return true if the CANDatabase contains a frame with the given frame name

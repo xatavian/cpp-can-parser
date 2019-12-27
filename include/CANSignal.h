@@ -2,22 +2,16 @@
 #define CANSignal_H
 
 #include <string>
-#include <memory>
+#include <map>
 #include <iostream>
 
 class CANSignal {
 public:
   struct Range {
-    static Range fromString(const std::string& minstr, const std::string& maxstr) {
-      long min = std::stol(minstr);
-      long max = std::stol(maxstr);
+    static Range fromString(const std::string& minstr, const std::string& maxstr);
 
-      return Range(min, max);
-    }
-    Range() :
-      defined(false), min(0), max(0) {}
-    Range(long m, long mm) :
-      defined(true), min(m), max(mm) {}
+    Range() = default; 
+    Range(long m, long mm);
 
     bool defined;
     long min;
@@ -31,60 +25,39 @@ public:
   enum Endianness {
     BigEndian, LittleEndian
   };
+
 public:
+  CANSignal() = delete;
   CANSignal(const std::string& name, unsigned int start_bit, unsigned int length,
-            double scale, double offset, Signedness signedness, Endianness endianness, Range range = Range()) :
-    name_(name), start_bit_(start_bit), length_(length),
-    scale_(scale), offset_(offset), signedness_(signedness), endianness_(endianness),
-    range_(range) { }
+            double scale, double offset, Signedness signedness, Endianness endianness, Range range = Range());
+  CANSignal(const CANSignal&) = default;
+  CANSignal(CANSignal&&) = default;
+  CANSignal& operator=(const CANSignal&) = default;
+  CANSignal& operator=(CANSignal&&) = default;
 
-  const std::string& name() const {
-    return name_;
-  }
+  const std::string& name() const;
 
-  unsigned int start_bit() const {
-    return start_bit_;
-  }
+  unsigned int start_bit() const;
 
-  unsigned int length() const {
-    return length_;
-  }
+  unsigned int length() const;
 
-  const std::string& comment() const {
-    return comment_;
-  }
+  const std::string& comment() const;
 
-  double scale() const {
-    return scale_;
-  }
+  double scale() const;
 
-  double offset() const {
-    return offset_;
-  }
+  double offset() const;
 
-  const Range& range() const {
-    return range_;
-  }
+  const Range& range() const;
 
-  Signedness signedness() const {
-    return signedness_;
-  }
+  Signedness signedness() const;
 
-  Endianness endianness() const {
-    return endianness_;
-  }
+  Endianness endianness() const;
 
-  const std::map<unsigned int, std::string>& choices() const {
-    return choices_;
-  }
+  const std::map<unsigned int, std::string>& choices() const;
 
-  void setComment(const std::string& comment) {
-    comment_ = comment;
-  }
+  void setComment(const std::string& comment);
 
-  void setChoices(const std::map<unsigned int, std::string>& choices) {
-    choices_ = choices;
-  }
+  void setChoices(const std::map<unsigned int, std::string>& choices);
 
 private:
   std::string name_;

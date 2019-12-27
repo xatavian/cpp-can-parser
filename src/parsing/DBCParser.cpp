@@ -39,14 +39,14 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
       wWrongFrameId(targetFrame.image(), tokenizer.lineCount());
       return;
     }
-    else if(!db.at(frame_id).lock()->hasSignal(targetSignal.image())) {
+    else if(!db.at(frame_id)->contains(targetSignal.image())) {
       warning("Frame " + targetFrame.image() +
               "has no signal \"" + targetSignal.image() + "\"",
             tokenizer.lineCount());
       return;
     }
-    db.at(frame_id).lock()
-      ->getSignalByName(targetSignal.image()).lock()
+    db.at(frame_id)
+      ->at(targetSignal.image())
       ->setComment(commentValue.image());
   }
   else if(commentType.image() == "BO_") {
@@ -60,8 +60,7 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
       return;
     }
 
-    db.at(frame_id).lock()
-      ->setComment(commentValue.image());
+    db.at(frame_id)->setComment(commentValue.image());
   }
   else {
     warning("Unsupported comment operation \"" +
@@ -97,13 +96,13 @@ void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
     unsigned int iPeriod = std::stoul(period.image());
 
     auto frame = db.at(iFrameId);
-    if(frame.expired()) {
+    if(!frame) {
       std::cout << "WARNING: frame " << iPeriod << " does not exist "
                 << "at line " << tokenizer.lineCount()
                 << std::endl;
       return;
     }
-    frame.lock()->setPeriod(iPeriod);
+    frame->setPeriod(iPeriod);
   }
   else {
     std::cout << "WARNING: Unrecognized BA_ command " << infoType.image()
@@ -291,14 +290,14 @@ void parseSignalChoices(Tokenizer& tokenizer, CANDatabase& db) {
 
   unsigned long long frame_id = targetFrame.toUInt();
   if(!db.contains(frame_id) ||
-     !db.at(frame_id).lock()->hasSignal(targetSignal.image())) {
+     !db.at(frame_id)->contains(targetSignal.image())) {
     warning("Cannot assign enum to signal \"" + targetFrame.image() + "/" +
             targetSignal.image() + "\"",
             tokenizer.lineCount());
     return;
   }
 
-  db.at(frame_id).lock()
-    ->getSignalByName(targetSignal.image()).lock()
+  db.at(frame_id)
+    ->at(targetSignal.image())
     ->setChoices(targetChoices);
 }

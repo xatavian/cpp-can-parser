@@ -52,10 +52,6 @@ void Tokenizer::saveToken(const Token& token) {
   tokenStack.push_back(token);
 }
 
-char Tokenizer::getCurrentChar() const {
-  return currentChar;
-}
-
 char Tokenizer::getNextChar() {
   currentChar = doGetNextChar();
   return currentChar;
@@ -191,7 +187,7 @@ FileTokenizer::FileTokenizer(const std::string& filename)
 }
 
 char FileTokenizer::doGetNextChar() {
-  if (inputstream.eof() == std::ifstream::traits_type::eof())
+  if (inputstream.eof())
     return 0;
 
   char result;

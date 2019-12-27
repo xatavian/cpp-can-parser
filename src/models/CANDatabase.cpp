@@ -10,7 +10,7 @@ CANDatabase::CANDatabase(const CANDatabase& src):
   filename_(src.filename_), strIndex_(), intIndex_() {
 
   for (const auto& frame : src) {
-    auto copy = std::make_shared<CANFrame>(frame);
+    auto copy = std::make_shared<CANFrame>(*frame.second);
     intIndex_.insert(std::make_pair(frame.second->can_id(), copy));
     strIndex_.insert(std::make_pair(frame.second->name(), copy));
   }
@@ -55,24 +55,12 @@ CANDatabase CANDatabase::fromString(const std::string & src_string) {
   return DBCParser::fromTokenizer(tokenizer);
 }
 
-std::weak_ptr<CANFrame> CANDatabase::at(const std::string& name) const {
-  std::weak_ptr<CANFrame> result;
-
-  auto ite = strIndex_.find(name);
-  if(ite != strIndex_.end())
-    result = ite->second;
-
-  return result;
+std::shared_ptr<CANFrame> CANDatabase::at(const std::string& name) const {
+  return strIndex_.at(name);
 }
 
-std::weak_ptr<CANFrame> CANDatabase::at(unsigned int id) const {
-  std::weak_ptr<CANFrame> result;
-
-  auto ite = intIndex_.find(id);
-  if(ite != intIndex_.end())
-    result = ite->second;
-
-  return result;
+std::shared_ptr<CANFrame> CANDatabase::at(unsigned long long id) const {
+  return intIndex_.at(id);
 }
 
 void CANDatabase::addFrame(std::shared_ptr<CANFrame> frame) {
@@ -92,12 +80,11 @@ void CANDatabase::addFrame(std::shared_ptr<CANFrame> frame) {
 void CANDatabase::removeFrame(const std::string& name) {
   auto ite = strIndex_.find(name);
   if(ite == strIndex_.end()) {
-    std::cout << "WARNING: Cannot remove frame with name \""
-              << name << "\"" << std::endl;
-    return;
+    std::string excepText = "Cannot remove frame with name " + name;
+    throw std::out_of_range(excepText);
   }
 
-  unsigned int intIdx = ite->second->can_id();
+  unsigned long long intIdx = ite->second->can_id();
   strIndex_.erase(ite); // No need for a second lookup
   intIndex_.erase(intIndex_.find(intIdx));
 }
@@ -105,9 +92,8 @@ void CANDatabase::removeFrame(const std::string& name) {
 void CANDatabase::removeFrame(unsigned int can_id) {
   auto ite = intIndex_.find(can_id);
   if(ite == intIndex_.end()) {
-    std::cout << "WARNING: Cannot remove frame with id "
-              << can_id << std::endl;
-    return;
+    std::string excepText = "Cannot remove frame with CAN ID " + std::to_string(can_id); 
+    throw std::out_of_range(excepText); 
   }
 
   std::string strIdx = ite->second->name();
@@ -115,7 +101,7 @@ void CANDatabase::removeFrame(unsigned int can_id) {
   strIndex_.erase(strIndex_.find(strIdx));
 }
 
-bool CANDatabase::contains(unsigned int can_id) const {
+bool CANDatabase::contains(unsigned long long can_id) const {
   return intIndex_.find(can_id) != intIndex_.end();
 }
 
@@ -192,4 +178,18 @@ void swap(CANDatabase & first, CANDatabase & second) {
   std::swap(first.intIndex_, second.intIndex_);
   std::swap(first.strIndex_, second.strIndex_);
   std::swap(first.filename_, second.filename_);
+}
+
+std::shared_ptr<CANFrame> CANDatabase::operator[](unsigned long long can_id) const {
+  auto ite = intIndex_.find(can_id);
+  if (ite == intIndex_.end())
+    return std::shared_ptr<CANFrame>();
+  return ite->second;
+}
+
+std::shared_ptr<CANFrame> CANDatabase::operator[](const std::string& name) const {
+  auto ite = strIndex_.find(name);
+  if (ite == strIndex_.end())
+    return std::shared_ptr<CANFrame>();
+  return ite->second;
 }

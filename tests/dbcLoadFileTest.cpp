@@ -17,8 +17,8 @@ void printFrame(std::shared_ptr<CANFrame> frame) {
             << "PERIOD(" << frame->period() << ")"
             << std::endl;
 
-  for(const auto& sigw : frame->signals()) {
-    std::shared_ptr<CANSignal> sig = sigw.lock();
+  for(const auto& sigw : *frame) {
+    std::shared_ptr<CANSignal> sig = sigw.second;
     std::cout << "  SIGNAL[" << sig->name() << "]: "
               << "startBit(" << sig->start_bit() << ") "
               << "length(" << sig->length() << ") "
@@ -42,8 +42,8 @@ int main() {
             << "(size= " << db.size() << "):"
             << std::endl;
 
-  for(const auto& framew: db.frames()) {
-      printFrame(framew.lock());
+  for(const auto& framew: db) {
+      printFrame(framew.second);
   }
 
   return 0;
