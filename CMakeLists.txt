@@ -20,9 +20,6 @@ add_library(cpp_can_parser STATIC ${CPPPARSER_SRC_FILES})
 target_include_directories(cpp_can_parser 
 	PUBLIC ${CPPPARSER_INCLUDE_DIRECTORY})
 
-add_executable(dbcLoadFileExec 
-	tests/dbcLoadFileTest.cpp)
-target_link_libraries(dbcLoadFileExec cpp_can_parser)
-
-add_test(NAME dbcLoadFileTest 
-		 COMMAND dbcLoadFileExec)
+add_executable(can-parse 
+	utils/can-parse.cpp)
+target_link_libraries(can-parse cpp_can_parser)

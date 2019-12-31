@@ -119,8 +119,13 @@ Token Tokenizer::getNextToken() {
     std::string literal = std::string(1, currentChar);
     currentChar = getNextChar();
 
-    while (isDigit(currentChar) || currentChar == '.') {
+    while (isDigit(currentChar) || currentChar == '.' || currentChar == 'e') {
       literal += currentChar;
+
+      if (currentChar == 'e') {
+        literal += getNextChar();
+      }
+      
       currentChar = getNextChar();
     }
 

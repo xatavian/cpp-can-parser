@@ -37,7 +37,7 @@ public:
   }
 
   double toDouble() const {
-    return std::stof(image_);
+    return std::stod(image_);
   }
   
 private:

@@ -10,6 +10,7 @@ using namespace DBCParser;
 std::shared_ptr<CANSignal> parseSignal(Tokenizer& tokenizer);
 std::shared_ptr<CANFrame>  parseFrame(Tokenizer& tokenizer);
 std::set<std::string>      parseECUs(Tokenizer& tokenizer);
+void                       parseNewSymbols(Tokenizer& tokenizer);
 void                       addBADirective(Tokenizer& tokenizer,
                                           CANDatabase& db);
 void                       addComment(Tokenizer& tokenizer, CANDatabase& db);
@@ -23,11 +24,20 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
   Token targetSignal;
 
   assertToken(tokenizer, "CM_");
-  commentType = checkTokenType(tokenizer, Token::Identifier);
+  
+  // Handle global comment
+  Token currentToken = tokenizer.getNextToken();
+  if (currentToken.type() == Token::Literal) {
+    skipIf(tokenizer, ";");
+    return;
+  }
+
+  commentType = checkCurrentTokenType(currentToken, Token::Identifier, tokenizer.lineCount());
 
   auto wWrongFrameId = [](const std::string& fId, unsigned long long line) {
     warning("Frame " + fId + " does not exist", line);
   };
+
   if(commentType.image() == "SG_") {
     targetFrame = checkTokenType(tokenizer, Token::Number);
     targetSignal = checkTokenType(tokenizer, Token::Identifier);
@@ -75,7 +85,7 @@ void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
   assertToken(tokenizer, "BA_");
 
   infoType = checkTokenType(tokenizer, Token::Literal);
-  if(infoType.image() == "GenMsgCycleTime") {
+  if(infoType.image() == "GenMsgCycleTime" || infoType.image() == "CycleTime") {
     skipIf(tokenizer, "BO_");
     Token frameId = checkTokenType(tokenizer, Token::Number);
     Token period = checkTokenType(tokenizer, Token::Number);
@@ -92,16 +102,18 @@ void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
       return;
     }
 
-    unsigned int iFrameId = std::stoul(frameId.image());
-    unsigned int iPeriod = std::stoul(period.image());
+    unsigned int iFrameId = frameId.toUInt();
+    unsigned int iPeriod = period.toUInt();
 
-    auto frame = db.at(iFrameId);
-    if(!frame) {
-      std::cout << "WARNING: frame " << iPeriod << " does not exist "
-                << "at line " << tokenizer.lineCount()
-                << std::endl;
-      return;
+    std::shared_ptr<CANFrame> frame;
+    try {
+      frame = db.at(iFrameId);
     }
+    catch (const std::out_of_range& e) {
+      std::string tempStr = std::to_string(iFrameId) + " does not exist at line " + std::to_string(tokenizer.lineCount());
+      throw CANDatabaseException(tempStr);
+    }
+
     frame->setPeriod(iPeriod);
   }
   else {
@@ -116,6 +128,23 @@ CANDatabase DBCParser::fromTokenizer(Tokenizer& tokenizer) {
   return fromTokenizer("", tokenizer);
 }
 
+void parseNewSymbols(Tokenizer& tokenizer) {
+  static std::set<std::string> ns_choices = {
+    "CM_", "BA_DEF_", "BA_", "VAL_", "CAT_DEF_", "CAT_", "FILTER", "BA_DEF_DEF_",
+    "EV_DATA_", "ENVVAR_DATA", "SGTYPE_", "SGTYPE_VAL_", "BA_DEF_SGTYPE_", "BA_SGTYPE_",
+    "SIG_TYPE_DEF_"
+  };
+  
+  assertToken(tokenizer, "NS_");
+  skipIf(tokenizer, ":");
+  
+  Token token = tokenizer.getNextToken();
+  while (ns_choices.find(token.image()) != ns_choices.end()) {
+    token = tokenizer.getNextToken();
+  }
+  tokenizer.saveToken(token);
+}
+
 CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokenizer) {
   std::cout << "Parsing: " << std::endl;
   Token currentToken = tokenizer.getNextToken();
@@ -124,36 +153,58 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
 
   while(currentToken.type() != Token::Eof) {
     // std::cout << currentToken.image() << std::endl;
-    if(currentToken.image() == "VERSION") {
+    if (currentToken.image() == "VERSION") {
       currentToken = checkTokenType(tokenizer, Token::Literal);
       std::cout << "DBC version: " << currentToken.image() << std::endl;
     }
-    else if(currentToken.image() == "BU_") {
+    else if (currentToken.image() == "BU_") {
       std::set<std::string> ecus = parseECUs(tokenizer);
       std::cout << "The following ECUs have been defined:" << std::endl;
-      for(const auto& ecu : ecus) {
+      for (const auto& ecu : ecus) {
         std::cout << ecu << ", ";
       }
       std::cout << std::endl;
     }
-    else if(currentToken.image() == "BO_") {
+    else if (currentToken.image() == "BO_") {
       std::shared_ptr<CANFrame> frame = parseFrame(tokenizer);
       result.addFrame(frame);
     }
-    else if(currentToken.image() == "SG_") {
+    else if (currentToken.image() == "SG_") {
       parseSignal(tokenizer);
-      std::cout << "Identified signal outside frame -> WARNING !!!"
-                << std::endl;
+      std::cout << "Identified signal outside frame -> WARNING !!! (line "
+        << tokenizer.lineCount() << ")" << std::endl;
     }
-    else if(currentToken.image() == "CM_") {
+    else if (currentToken.image() == "CM_") {
       addComment(tokenizer, result);
       // TODO: Handle comments
     }
-    else if(currentToken.image() == "BA_") {
+    else if (currentToken.image() == "BA_") {
       addBADirective(tokenizer, result);
     }
-    else if(currentToken.image() == "VAL_") {
+    else if (currentToken.image() == "VAL_") {
       parseSignalChoices(tokenizer, result);
+    }
+    else if (currentToken.image() == "NS_") {
+      parseNewSymbols(tokenizer);
+    }
+    else if (currentToken.image() == "BS_") {
+      skipIf(tokenizer, ":");
+
+      currentToken = tokenizer.getNextToken();
+      if (currentToken.type() != Token::Number)
+        continue;
+
+      Token baudrate = checkCurrentTokenType(currentToken, Token::Number, tokenizer.lineCount());
+      skipIf(tokenizer, ":");
+      Token btr1 = checkTokenType(tokenizer, Token::Number);
+      skipIf(tokenizer, ",");
+      Token btr2 = checkTokenType(tokenizer, Token::Number);
+
+      // TODO: handle the statement
+    }
+    else {
+      std::cerr << currentToken.image() << " is not a valid statement (yet). The statement is skipped." << std::endl;
+      tokenizer.skipUntil(";");
     }
     currentToken = tokenizer.getNextToken();
   }
@@ -187,7 +238,16 @@ std::shared_ptr<CANSignal> parseSignal(Tokenizer& tokenizer) {
   max = checkTokenType(tokenizer, Token::Number);
   skipIf(tokenizer, "]");
   unit = checkTokenType(tokenizer, Token::Literal);
+   
   targetECU = checkTokenType(tokenizer, Token::Identifier); // Ignored for now
+  Token currentToken = tokenizer.getNextToken();
+  while (currentToken.image() == ",") {
+    targetECU = checkTokenType(tokenizer, Token::Identifier);
+    currentToken = tokenizer.getNextToken();
+  }
+
+  if (currentToken.type() != Token::Eof)
+    tokenizer.saveToken(currentToken);
 
   return std::make_shared<CANSignal>(
     signalName.image(),
@@ -219,8 +279,8 @@ std::shared_ptr<CANFrame> parseFrame(Tokenizer& tokenizer) {
 
   std::shared_ptr<CANFrame> result = std::make_shared<CANFrame>(
     name.image(),
-    std::stoul(id.image()),
-    std::stoul(dlc.image())
+    id.toUInt(),
+    dlc.toUInt()
   );
 
   Token currentToken = tokenizer.getNextToken();

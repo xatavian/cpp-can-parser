@@ -48,6 +48,10 @@ unsigned int CANFrame::period() const {
   return period_;
 }
 
+const std::string& CANFrame::comment() const {
+  return comment_;
+}
+
 void CANFrame::setPeriod(unsigned int val) {
   period_ = val;
 }
