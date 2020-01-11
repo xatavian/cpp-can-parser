@@ -1,7 +1,8 @@
 #include "CANDatabase.h"
-
+#include "CANDatabaseAnalysis.h"
 #include <iostream>
-#include <windows.h>
+#include <cstring>
+#include <algorithm>
 
 void printFrame(std::shared_ptr<CANFrame> frame) {
   auto choicesStr = [](const std::map<unsigned int, std::string>& choices) {
@@ -41,11 +42,28 @@ void showUsage(char* program_name) {
   std::cerr << "Usage: " << program_name << " <path/to/file>" << std::endl;
   std::cerr << "Currently supported formats: DBC" << std::endl;
 }
-std::string ExePath() {
-  char buffer[MAX_PATH];
-  GetModuleFileName(NULL, buffer, MAX_PATH);
-  std::string::size_type pos = std::string(buffer).find_last_of("\\/");
-  return std::string(buffer).substr(0, pos);
+
+void executeAction(CANDatabase& db, int argc, char** argv) {
+  if(strcmp(argv[1], "checkframe") == 0) {
+    std::vector<uint64_t> ids;
+    for(const auto& frame : db) {
+      if(!CppCAN::analysis::is_frame_layout_ok(*frame.second))
+        ids.push_back(frame.second->can_id());
+    }
+
+    if(ids.size() == 0)
+      std::cout << "No layout issue have been found in the CAN database." << std::endl;
+    else {
+      std::cout << "Some layout have been found in the database for the following frames: ";
+      std::cout << std::hex << std::showbase;
+      std::for_each(ids.begin(), ids.end(), [](uint64_t id) { std::cout << id << ", "; });
+    }
+  }
+  else {
+    for (const auto& framew : db) {
+      printFrame(framew.second);
+    }
+  }
 }
 
 int main(int argc, char** argv) {
@@ -59,22 +77,14 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  
+   
   try {
     CANDatabase db = CANDatabase::fromFile(argv[1]);
-
-    std::cout << "Exploring the CAN Database \"" << db.filename() << "\" "
-      << "(size= " << db.size() << "):"
-      << std::endl;
-
-    for (const auto& framew : db) {
-      printFrame(framew.second);
-    }
+    executeAction(db, argc, argv);
   }
   catch (const CANDatabaseException& e) {
     std::cerr << "An error happened while parsing the database: " 
               << e.what() << std::endl;
-    std::cerr << "CWD: " << ExePath() << std::endl;
     return 1;
   }
 
