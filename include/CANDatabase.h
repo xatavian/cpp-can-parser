@@ -71,7 +71,7 @@ public:
    * Note: the source database is passed-by-value for RVO
    *       (see https://stackoverflow.com/a/3279550/8147455 for more info)
    */
-  CANDatabase& operator=(CANDatabase);
+  CANDatabase& operator=(const CANDatabase&);
 
   /**
    * @brief Moves a CANDatabase object. The CANFrame objects are NOT deep copied.
