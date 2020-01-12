@@ -2,24 +2,198 @@
 #include "CANDatabase.h"
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
+#include <numeric>
 
-void print_info_separator(int level = 0) {
-  static const char* level_0_separator = "##############";
-  static const char* level_1_separator = "--------------";
-  static const char* level_2_separator = "~~~~~~~~~~~~~~";
-  const char** separator = nullptr;
+class ConsoleTable {
+public:
+  struct TableData {
+    struct TableCell {
+      enum Type {
+        UnsignedHex, Unsigned, Signed, String, Float
+      };
 
-  switch(level) {
-    case 0:
-    default:
-      separator = &level_0_separator;
-      break;
+      Type type;
+      uint64_t u;
+      int64_t i;
+      std::string s;
+      double d;
+    };
 
-    case 1:
-      separator = &level_1_separator;
-      break;
+    std::vector<TableCell> data;
+    bool is_full_line;
+  };
+
+  static const char LINE_SEPARATOR = '-';
+  static const char COLUMN_SEPARATOR = '|';
+  static const unsigned SPACE_AMOUNT = 2;
+
+public:
+  ConsoleTable(std::initializer_list<std::string> headers, bool add_final_line_separator = true) 
+    : column_headers(headers), add_final_ls(add_final_line_separator) { 
+      std::transform(column_headers.begin(), column_headers.end(), std::back_inserter(columns_width),
+                     [](const std::string& s) { return s.size() + 2; });
+    }
+
+  ConsoleTable(unsigned headers_num, bool add_final_line_separator = true) {
+    columns_width.resize(headers_num);
+    add_final_ls = add_final_line_separator;
   }
-    std::cout << *separator << std::endl;
+  
+  void add_row(std::initializer_list<TableData::TableCell> row_data, bool is_full_line) {
+    data.push_back({ row_data, is_full_line });
+
+    if(is_full_line)
+      return;
+
+    size_t i = 0;
+    for(const TableData::TableCell& data: row_data) {
+      if(data.type == TableData::TableCell::String) {
+        columns_width[i] = std::max(data.s.size() + SPACE_AMOUNT, 
+                                    columns_width[i]);
+      }
+      i++;
+    }
+  }
+
+  void render() const {
+    // Some columns headers have been defined, we can create the table normally
+    if(column_headers.size() > 0) {
+      unsigned total_width = std::accumulate(columns_width.begin(), columns_width.end(), 0);
+      total_width += columns_width.size(); // for the + " "
+
+      std::string line_separator(total_width, LINE_SEPARATOR);
+          
+      // Render the table header
+      renderNormalHeader(line_separator);
+    
+      // Render the data
+      for(size_t i = 0; i < data.size(); i++) {
+        std::cout << COLUMN_SEPARATOR;
+        for(size_t j = 0; j < data[i].data.size(); j++) {
+          renderCell(data[i].data[j], columns_width[j]);
+          std::cout << COLUMN_SEPARATOR;
+        }
+
+        if(i < data.size() - 1 || add_final_ls) {
+          std::cout << std::endl << line_separator << std::endl;
+        }
+      }
+    }
+    else {
+      std::vector<std::string> computed_string;
+      std::transform(data[0].data.begin(), data[0].data.end(), 
+                     std::back_inserter(computed_string), [this](const TableData::TableCell& cell) {
+          std::stringstream ss;
+          ss << " ";
+          parseCell(ss, cell);
+          ss << " ";
+          return ss.str();
+      });
+
+      size_t i = 0;
+      unsigned total_width = std::accumulate(computed_string.begin(), computed_string.end(), 0, 
+          [&i, this](unsigned prev, const std::string& s){ 
+            return prev + s.size() + 1; 
+          }
+      );
+
+      std::string line_separator(total_width, LINE_SEPARATOR);
+
+      std::cout << line_separator << std::endl << COLUMN_SEPARATOR;
+      
+      for(size_t j = 0; j < data[0].data.size(); j++) {
+        std::cout << computed_string[j] << COLUMN_SEPARATOR;
+      }
+
+      std::cout << std::endl;
+      if(add_final_ls) {
+        std::cout << line_separator << std::endl;
+      }
+    }
+  }
+
+private:
+  void renderNormalHeader(const std::string& line_separator) const {
+    std::cout << line_separator << std::endl << COLUMN_SEPARATOR;
+    for(size_t i = 0; i < column_headers.size(); i++) {
+      std::cout << std::left << std::setw(columns_width[i]) << (" " + column_headers[i]) << COLUMN_SEPARATOR; 
+    }
+    std::cout << std::endl << line_separator << std::endl;
+  }
+
+  void renderCell(const TableData::TableCell& cell, unsigned col_size) const {
+        std::cout << std::left << " ";
+        std::cout << std::setw(col_size - 1);
+
+        parseCell(std::cout, cell);
+  }
+
+  void parseCell(std::ostream& is, const TableData::TableCell& cell) const {
+    switch(cell.type) {
+          case TableData::TableCell::Unsigned:
+            is << cell.u;
+            break;
+          
+          case TableData::TableCell::UnsignedHex:
+            is << std::hex << std::showbase << cell.u
+                      << std::dec << std::noshowbase;
+            break;
+          
+          case TableData::TableCell::Signed:
+            is << cell.i;
+            break;
+
+          case TableData::TableCell::String:
+            is << cell.s;
+            break;
+
+          case TableData::TableCell::Float:
+          {
+            std::streamsize precision = is.precision();
+            is << std::setprecision(3) << cell.d 
+               << std::setprecision(precision);
+          }
+          break;
+        }
+  }
+private:
+  std::vector<std::string> column_headers;
+  std::vector<size_t> columns_width;
+  std::vector<TableData> data;
+  bool add_final_ls;
+};
+
+ConsoleTable::TableData::TableCell createUnsigned(uint64_t val) {
+  ConsoleTable::TableData::TableCell result;
+  result.type = ConsoleTable::TableData::TableCell::Unsigned;
+  result.u = val;
+
+  return result;
+}
+
+ConsoleTable::TableData::TableCell createHex(uint64_t val) {
+  ConsoleTable::TableData::TableCell result;
+  result.type = ConsoleTable::TableData::TableCell::UnsignedHex;
+  result.u = val;
+
+  return result;
+}
+
+ConsoleTable::TableData::TableCell createStr(const std::string& val) {
+  ConsoleTable::TableData::TableCell result;
+  result.type = ConsoleTable::TableData::TableCell::String;
+  result.s = val;
+
+  return result;
+}
+
+ConsoleTable::TableData::TableCell createFloat(double val) {
+  ConsoleTable::TableData::TableCell result;
+  result.type = ConsoleTable::TableData::TableCell::Float;
+  result.d = val;
+
+  return result;
 }
 
 void print_frame_impl(const CANFrame& frame) {   
@@ -60,38 +234,34 @@ void print_signal_impl(const CANSignal& sig) {
 void CppCAN::can_parse::print_single_frame(CANDatabase& db, uint32_t can_id) {
   const CANFrame& frame = db[can_id];
 
-  print_frame_impl(frame);
-  
-  print_info_separator(1);
-  
-  // First, explore the database to find "pretty-printing" parameters
-  int sig_name_maxsize = 15; // At least a reasonable column size
-  for(const auto& sig : frame) {
-    if(sig.second.name().size() > sig_name_maxsize)
-      sig_name_maxsize = sig.second.name().size() + 1;
-  }
+  std::stringstream can_id_ss;
+  can_id_ss << "CAN ID: " << std::hex << std::showbase << frame.can_id();
 
-  std::cout << std::left << std::setw(sig_name_maxsize) << "Signal name"
-            << std::setw(10) << "Start bit" 
-            << std::setw(9) << "Length" 
-            << std::setw(9) << "Scale" 
-            << std::setw(10) << "Offset" 
-            << std::setw(12) << "Signedness" 
-            << std::setw(15) << "Endianness" 
-            << std::setw(10) << "Range" 
-            << std::endl;
+  ConsoleTable summary_header(4, false);
+  summary_header.add_row({
+    createStr(frame.name()), createStr(can_id_ss.str()), 
+    createStr("DLC: " + std::to_string(frame.dlc())), createStr("Period: " + std::to_string(frame.period()) + "ms")
+  }, false);
 
+  ConsoleTable console_table = {
+    "Signal name", "Start bit", "Length", "Scale", 
+    "Offset", "Signedness", "Endianness", "Range"
+  };
+ 
   for(const auto& sig : frame) {
     const CANSignal& signal = sig.second;
-    std::cout << std::left << std::setw(sig_name_maxsize) << signal.name()
-              << std::setw(10) << signal.start_bit()
-              << std::setw(9) << signal.length() 
-              << std::setw(9) << std::setprecision(3) << signal.scale() 
-              << std::setw(10) << std::setprecision(3) << signal.offset() 
-              << std::setw(12) << ((signal.signedness() == CANSignal::Signed) ? "Signed" : "Unsigned")
-              << std::setw(15) << ((signal.endianness() == CANSignal::BigEndian) ? "BigEndian" : "LittleEndian")
-              << std::setw(10) << ("[" + std::to_string(signal.range().min) + ", " + std::to_string(signal.range().max) + "]")
-              << std::endl;              
+    console_table.add_row({
+      createStr(signal.name()), 
+      createUnsigned(signal.start_bit()), 
+      createUnsigned(signal.length()),
+      createFloat(signal.scale()), 
+      createFloat(signal.offset()),
+      signal.signedness() == CANSignal::Signed ? createStr("Signed") : createStr("Unsigned"),
+      signal.endianness() == CANSignal::BigEndian ? createStr("BigEndian") : createStr("LittleEndian"),
+      createStr("[" + std::to_string(signal.range().min) + ", " + std::to_string(signal.range().max) + "]")
+    }, false);            
   }
-  
+
+  summary_header.render();
+  console_table.render();
 }
