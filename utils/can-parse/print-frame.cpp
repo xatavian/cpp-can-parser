@@ -78,8 +78,8 @@ void CppCAN::can_parse::print_all_frames(CANDatabase& db) {
   // First, explore the database to find "pretty-printing" parameters
   int frame_name_maxsize = 12; // At least a reasonable column size
   for(const auto& frame : db) {
-    if(frame.second->name().size() > frame_name_maxsize)
-      frame_name_maxsize = frame.second->name().size() + 1;
+    if(frame.second.name().size() > frame_name_maxsize)
+      frame_name_maxsize = frame.second.name().size() + 1;
   }
 
   int full_line_size = frame_name_maxsize + INT_COL_SIZE * 3; 
@@ -93,7 +93,7 @@ void CppCAN::can_parse::print_all_frames(CANDatabase& db) {
   std::cout.fill(' ');
              
   for(const auto& frame : db) {
-    print_frame_line(*frame.second, frame_name_maxsize);
+    print_frame_line(frame.second, frame_name_maxsize);
   }
   
   /*

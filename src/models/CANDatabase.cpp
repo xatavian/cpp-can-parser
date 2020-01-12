@@ -4,41 +4,14 @@
 #include <iostream>
 
 CANDatabase::CANDatabase(const std::string& filename)
-  : filename_(filename), strIndex_(), intIndex_() { }
-
-CANDatabase::CANDatabase(const CANDatabase& src):
-  filename_(src.filename_), strIndex_(), intIndex_() {
-
-  for (const auto& frame : src) {
-    auto copy = std::make_shared<CANFrame>(*frame.second);
-    intIndex_.insert(std::make_pair(frame.second->can_id(), copy));
-    strIndex_.insert(std::make_pair(frame.second->name(), copy));
-  }
-}
-
-CANDatabase & CANDatabase::operator=(const CANDatabase& src) {
-  CANDatabase temp(src);
-  swap(temp, *this);
-  return *this;
-}
-
-CANDatabase::CANDatabase(CANDatabase && src)
-  : filename_(), strIndex_(), intIndex_() {
-
-  swap(*this, src);
-}
-
-CANDatabase & CANDatabase::operator=(CANDatabase && src) {
-  swap(*this, src);
-  return *this;
-}
+  : filename_(filename) { }
 
 const std::string& CANDatabase::filename() const {
   return filename_;
 }
 
 std::size_t CANDatabase::size() const {
-  return intIndex_.size();
+  return map_.size();
 }
 
 CANDatabase CANDatabase::fromFile(const std::string& filename) {
@@ -56,141 +29,174 @@ CANDatabase CANDatabase::fromString(const std::string & src_string) {
   return DBCParser::fromTokenizer(tokenizer);
 }
 
-std::shared_ptr<CANFrame> CANDatabase::at(const std::string& name) const {
-  return strIndex_.at(name);
+const CANFrame& CANDatabase::at(const std::string& name) const {
+  const IDKey& map_key = strKeyIndex_.at(name);
+  return map_.at(map_key);
 }
 
-std::shared_ptr<CANFrame> CANDatabase::at(unsigned long long id) const {
-  return intIndex_.at(id);
+CANFrame& CANDatabase::at(const std::string& name) {
+  const IDKey& map_key = strKeyIndex_.at(name);
+  return map_.at(map_key);
 }
 
-void CANDatabase::addFrame(std::shared_ptr<CANFrame> frame) {
-  if(strIndex_.find(frame->name()) != strIndex_.end()) {
+const CANFrame& CANDatabase::at(unsigned long long id) const {
+  const IDKey& map_key = intKeyIndex_.at(id);
+  return map_.at(map_key);
+}
+
+CANFrame& CANDatabase::at(unsigned long long id) {
+  const IDKey& map_key = intKeyIndex_.at(id);
+  return map_.at(map_key);
+}
+
+void CANDatabase::addFrame(const CANFrame& frame) {
+  if(strKeyIndex_.find(frame.name()) != strKeyIndex_.end()) {
     std::cout << "WARNING: Double declaration of a frame with name "
-              << "\"" << frame->name() << "\"" << std::endl;
+              << "\"" << frame.name() << "\"" << std::endl;
   }
-  if(intIndex_.find(frame->can_id()) != intIndex_.end()) {
+  
+  if(intKeyIndex_.find(frame.can_id()) != intKeyIndex_.end()) {
     std::cout << "WARNING: Double declaration of a frame with id "
-              << frame->can_id() << std::endl;
+              << frame.can_id() << std::endl;
   }
 
-  strIndex_.insert(std::make_pair(frame->name(), frame));
-  intIndex_.insert(std::make_pair(frame->can_id(), frame));
+  IDKey map_key = { frame.name(), frame.can_id() };
+
+  map_.insert(std::make_pair(map_key, frame));
+  strKeyIndex_.insert(std::make_pair(frame.name(), map_key));
+  intKeyIndex_.insert(std::make_pair(frame.can_id(), map_key));
 }
 
 void CANDatabase::removeFrame(const std::string& name) {
-  auto ite = strIndex_.find(name);
-  if(ite == strIndex_.end()) {
+  try {
+    const IDKey& map_key = strKeyIndex_.at(name);
+
+    map_.erase(map_.find(map_key));
+    strKeyIndex_.erase(strKeyIndex_.find(map_key.str_key));
+    intKeyIndex_.erase(intKeyIndex_.find(map_key.int_key));
+  } 
+  catch(const std::out_of_range&) {
     std::string excepText = "Cannot remove frame with name " + name;
     throw std::out_of_range(excepText);
   }
-
-  unsigned long long intIdx = ite->second->can_id();
-  strIndex_.erase(ite); // No need for a second lookup
-  intIndex_.erase(intIndex_.find(intIdx));
 }
 
 void CANDatabase::removeFrame(unsigned int can_id) {
-  auto ite = intIndex_.find(can_id);
-  if(ite == intIndex_.end()) {
-    std::string excepText = "Cannot remove frame with CAN ID " + std::to_string(can_id); 
-    throw std::out_of_range(excepText); 
-  }
+  try {
+    const IDKey& map_key = intKeyIndex_.at(can_id);
 
-  std::string strIdx = ite->second->name();
-  intIndex_.erase(ite); // No need for a second lookup
-  strIndex_.erase(strIndex_.find(strIdx));
+    map_.erase(map_.find(map_key));
+    strKeyIndex_.erase(strKeyIndex_.find(map_key.str_key));
+    intKeyIndex_.erase(intKeyIndex_.find(map_key.int_key));
+  } 
+  catch(const std::out_of_range&) {
+    std::string excepText = "Cannot remove frame with CAN ID ";
+    excepText += std::to_string(can_id);
+    throw std::out_of_range(excepText);
+  }
 }
 
 bool CANDatabase::contains(unsigned long long can_id) const {
-  return intIndex_.find(can_id) != intIndex_.end();
+  return intKeyIndex_.find(can_id) != intKeyIndex_.end();
 }
 
 bool CANDatabase::contains(const std::string& name) const {
-  return strIndex_.find(name) != strIndex_.end();
+  return strKeyIndex_.find(name) != strKeyIndex_.end();
 }
 
 CANDatabase::iterator 
 CANDatabase::begin() {
-  return intIndex_.begin();
+  return map_.begin();
 }
 
 CANDatabase::const_iterator 
 CANDatabase::begin() const {
-  return intIndex_.begin();
+  return map_.begin();
 }
 
 CANDatabase::const_iterator
 CANDatabase::cbegin() const {
-  return intIndex_.cbegin();
+  return map_.cbegin();
 }
 
 CANDatabase::iterator 
 CANDatabase::end() {
-  return intIndex_.end();
+  return map_.end();
 }
 
 CANDatabase::const_iterator 
 CANDatabase::end() const {
-  return intIndex_.end();
+  return map_.end();
 }
 
 CANDatabase::const_iterator
 CANDatabase::cend() const {
-  return intIndex_.cend();
+  return map_.cend();
 }
 
 CANDatabase::reverse_iterator 
 CANDatabase::rbegin() {
-  return intIndex_.rbegin();
+  return map_.rbegin();
 }
 
 CANDatabase::const_reverse_iterator 
 CANDatabase::rbegin() const {
-  return intIndex_.rbegin();
+  return map_.rbegin();
 }
 
 CANDatabase::const_reverse_iterator
 CANDatabase::crbegin() const {
-  return intIndex_.crbegin();
+  return map_.crbegin();
 }
 
 CANDatabase::reverse_iterator 
 CANDatabase::rend() {
-  return intIndex_.rend();
+  return map_.rend();
 }
 
 CANDatabase::const_reverse_iterator 
 CANDatabase::rend() const {
-  return intIndex_.rend();
+  return map_.rend();
 }
 
 CANDatabase::const_reverse_iterator
 CANDatabase::crend() const {
-  return intIndex_.crend();
+  return map_.crend();
 }
 
 void CANDatabase::clear() {
-  intIndex_.clear();
-  strIndex_.clear();
+  map_.clear();
+  intKeyIndex_.clear();
+  strKeyIndex_.clear();
 }
 
 void swap(CANDatabase & first, CANDatabase & second) {
-  std::swap(first.intIndex_, second.intIndex_);
-  std::swap(first.strIndex_, second.strIndex_);
+  std::swap(first.intKeyIndex_, second.intKeyIndex_);
+  std::swap(first.strKeyIndex_, second.strKeyIndex_);
+  std::swap(first.map_, second.map_);
   std::swap(first.filename_, second.filename_);
 }
 
-std::shared_ptr<CANFrame> CANDatabase::operator[](unsigned long long can_id) const {
-  auto ite = intIndex_.find(can_id);
-  if (ite == intIndex_.end())
-    return std::shared_ptr<CANFrame>();
-  return ite->second;
+const CANFrame& CANDatabase::operator[](unsigned long long can_id) const {
+  const IDKey& map_key = intKeyIndex_.at(can_id);
+  return map_.at(map_key);
 }
 
-std::shared_ptr<CANFrame> CANDatabase::operator[](const std::string& name) const {
-  auto ite = strIndex_.find(name);
-  if (ite == strIndex_.end())
-    return std::shared_ptr<CANFrame>();
-  return ite->second;
+CANFrame& CANDatabase::operator[](unsigned long long can_id) {
+  const IDKey& map_key = intKeyIndex_.at(can_id);
+  return map_.at(map_key);
+}
+
+const CANFrame& CANDatabase::operator[](const std::string& name) const {
+  const IDKey& map_key = strKeyIndex_.at(name);
+  return map_.at(map_key);
+}
+
+CANFrame& CANDatabase::operator[](const std::string& name) {
+  const IDKey& map_key = strKeyIndex_.at(name);
+  return map_.at(map_key);
+}
+
+bool CANDatabase::IntIDKeyCompare::operator()(const IDKey& k1, const IDKey& k2) const {
+  return k1.int_key < k2.int_key;
 }

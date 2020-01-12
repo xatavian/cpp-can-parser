@@ -40,8 +40,16 @@ public:
   static CANDatabase fromString(const std::string& src_string);
 
 public:
-  using container_type = std::map<unsigned long long, std::shared_ptr<CANFrame>>;
-  using str_container_type = std::map<std::string, std::shared_ptr<CANFrame>>;
+  struct IDKey {
+    std::string str_key;
+    unsigned long long int_key;
+  };
+
+  struct IntIDKeyCompare {
+    bool operator()(const IDKey& k1, const IDKey& k2) const;
+  };
+
+  using container_type = std::map<IDKey, CANFrame, IntIDKeyCompare>;
   
   using iterator = container_type::iterator;
   using const_iterator = container_type::const_iterator;
@@ -64,46 +72,63 @@ public:
    * Creates a copy of the database: the individual frames are deep copied so there is no
    * shared memory betwwen the two databases.
    */
-  CANDatabase(const CANDatabase&);
+  CANDatabase(const CANDatabase&) = default;
 
   /**
    * @brief Makes a copy of the given database
-   * Note: the source database is passed-by-value for RVO
-   *       (see https://stackoverflow.com/a/3279550/8147455 for more info)
    */
-  CANDatabase& operator=(const CANDatabase&);
+  CANDatabase& operator=(const CANDatabase&) = default;
 
   /**
    * @brief Moves a CANDatabase object. The CANFrame objects are NOT deep copied.
    */
-  CANDatabase(CANDatabase&&);
+  CANDatabase(CANDatabase&&) = default;
 
   /**
    * @see CANDatabase(const CANDatabase&&)
    */
-  CANDatabase& operator=(CANDatabase&&);
+  CANDatabase& operator=(CANDatabase&&) = default;
 
 public:
   /**
    * @brief Get the frame with the given frame name
    */
-  std::shared_ptr<CANFrame> at(unsigned long long frame_name) const;
-  
-  /**
-   * @brief Get the frame with the given frame id
-   */
-  std::shared_ptr<CANFrame> at(const std::string& frame_name) const;
-
-  /**
-   * @brief Get the frame with the given frame id
-   * @see getFrame
-   */
-  std::shared_ptr<CANFrame> operator[](unsigned long long frame_idx) const;
+  const CANFrame& at(unsigned long long frame_id) const;
   
   /**
    * @brief Get the frame with the given frame name
    */
-  std::shared_ptr<CANFrame> operator[](const std::string& frame_name) const;
+  CANFrame& at(unsigned long long frame_id);
+  
+  /**
+   * @brief Get the frame with the given frame id
+   */
+  const CANFrame& at(const std::string& frame_name) const;
+  
+  /**
+   * @brief Get the frame with the given frame id
+   */
+  CANFrame& at(const std::string& frame_name);
+
+  /**
+   * @brief Get the frame with the given frame id
+   */
+  const CANFrame& operator[](unsigned long long frame_idx) const;
+  
+  /**
+   * @brief Get the frame with the given frame id
+   */
+   CANFrame& operator[](unsigned long long frame_idx);
+  
+  /**
+   * @brief Get the frame with the given frame name
+   */
+  const CANFrame& operator[](const std::string& frame_name) const;
+  
+  /**
+   * @brief Get the frame with the given frame name
+   */
+  CANFrame& operator[](const std::string& frame_name);
 
   /**
    * @return true if the CANDatabase contains a frame with the given frame id
@@ -152,14 +177,16 @@ public:
 
   void clear();
 
-  void addFrame(std::shared_ptr<CANFrame> frame);
+  void addFrame(const CANFrame& frame);
   void removeFrame(unsigned int idx);
   void removeFrame(const std::string& name);
 
 private:
   std::string filename_;
-  str_container_type strIndex_; // Index by frame name
-  container_type intIndex_; // Index by CAN ID
+  container_type map_; // Index by CAN ID
+
+  std::map<unsigned long long, IDKey> intKeyIndex_;
+  std::map<std::string, IDKey> strKeyIndex_;
 };
 
 #endif

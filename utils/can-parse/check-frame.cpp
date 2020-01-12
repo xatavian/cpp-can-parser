@@ -6,8 +6,8 @@
 void CppCAN::can_parse::check_all_frames(CANDatabase& db) {
   std::vector<uint32_t> ids;
     for(const auto& frame : db) {
-      if(!CppCAN::analysis::is_frame_layout_ok(*frame.second))
-        ids.push_back(frame.second->can_id());
+      if(!CppCAN::analysis::is_frame_layout_ok(frame.second))
+        ids.push_back(frame.second.can_id());
     }
 
     if(ids.size() == 0)
