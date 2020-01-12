@@ -129,8 +129,6 @@ int main(int argc, char** argv) {
               << e.what() << std::endl;
     return 2;
   }
-
-  std::cout << (detail_frame == 0 ? "Print all" : "Print CAN ID " + std::to_string(detail_frame)) << std::endl; 
   switch(action) {
     case PrintAll:
       print_all_frames(db);
