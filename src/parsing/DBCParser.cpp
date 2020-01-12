@@ -7,8 +7,8 @@
 
 using namespace DBCParser;
 
-std::shared_ptr<CANSignal> parseSignal(Tokenizer& tokenizer);
-std::shared_ptr<CANFrame>  parseFrame(Tokenizer& tokenizer);
+CANSignal                  parseSignal(Tokenizer& tokenizer);
+CANFrame                   parseFrame(Tokenizer& tokenizer);
 std::set<std::string>      parseECUs(Tokenizer& tokenizer);
 void                       parseNewSymbols(Tokenizer& tokenizer);
 void                       addBADirective(Tokenizer& tokenizer,
@@ -49,15 +49,15 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
       wWrongFrameId(targetFrame.image(), tokenizer.lineCount());
       return;
     }
-    else if(!db.at(frame_id)->contains(targetSignal.image())) {
+    else if(!db.at(frame_id).contains(targetSignal.image())) {
       warning("Frame " + targetFrame.image() +
               "has no signal \"" + targetSignal.image() + "\"",
             tokenizer.lineCount());
       return;
     }
     db.at(frame_id)
-      ->at(targetSignal.image())
-      ->setComment(commentValue.image());
+      .at(targetSignal.image())
+      .setComment(commentValue.image());
   }
   else if(commentType.image() == "BO_") {
     targetFrame = checkTokenType(tokenizer, Token::Number);
@@ -70,7 +70,7 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
       return;
     }
 
-    db.at(frame_id)->setComment(commentValue.image());
+    db.at(frame_id).setComment(commentValue.image());
   }
   else {
     warning("Unsupported comment operation \"" +
@@ -105,16 +105,13 @@ void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
     unsigned int iFrameId = frameId.toUInt();
     unsigned int iPeriod = period.toUInt();
 
-    std::shared_ptr<CANFrame> frame;
     try {
-      frame = db.at(iFrameId);
+      db.at(iFrameId).setPeriod(iPeriod);
     }
     catch (const std::out_of_range& e) {
       std::string tempStr = std::to_string(iFrameId) + " does not exist at line " + std::to_string(tokenizer.lineCount());
       throw CANDatabaseException(tempStr);
     }
-
-    frame->setPeriod(iPeriod);
   }
   else {
     std::cout << "WARNING: Unrecognized BA_ command " << infoType.image()
@@ -166,8 +163,7 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
       std::cout << std::endl;
     }
     else if (currentToken.image() == "BO_") {
-      std::shared_ptr<CANFrame> frame = parseFrame(tokenizer);
-      result.addFrame(frame);
+      result.addFrame(parseFrame(tokenizer));
     }
     else if (currentToken.image() == "SG_") {
       parseSignal(tokenizer);
@@ -212,7 +208,7 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
   return result;
 }
 
-std::shared_ptr<CANSignal> parseSignal(Tokenizer& tokenizer) {
+CANSignal parseSignal(Tokenizer& tokenizer) {
   Token signalName, startBit, length,
         endianess, signedness, scale,
         offset, min, max, unit, targetECU;
@@ -249,7 +245,7 @@ std::shared_ptr<CANSignal> parseSignal(Tokenizer& tokenizer) {
   if (currentToken.type() != Token::Eof)
     tokenizer.saveToken(currentToken);
 
-  return std::make_shared<CANSignal>(
+  return CANSignal(
     signalName.image(),
     std::stoul(startBit.image()),
     std::stoul(length.image()),
@@ -261,7 +257,7 @@ std::shared_ptr<CANSignal> parseSignal(Tokenizer& tokenizer) {
   );
 }
 
-std::shared_ptr<CANFrame> parseFrame(Tokenizer& tokenizer) {
+CANFrame parseFrame(Tokenizer& tokenizer) {
   Token name;
   Token id;
   Token dlc;
@@ -277,16 +273,13 @@ std::shared_ptr<CANFrame> parseFrame(Tokenizer& tokenizer) {
   dlc = checkTokenType(tokenizer, Token::Number);
   ecu = checkTokenType(tokenizer, Token::Identifier);
 
-  std::shared_ptr<CANFrame> result = std::make_shared<CANFrame>(
-    name.image(),
-    id.toUInt(),
-    dlc.toUInt()
-  );
+  CANFrame result(
+    name.image(), id.toUInt(), dlc.toUInt());
 
   Token currentToken = tokenizer.getNextToken();
 
   while(currentToken.image() == "SG_") {
-    result->addSignal(parseSignal(tokenizer));
+    result.addSignal(parseSignal(tokenizer));
     currentToken = tokenizer.getNextToken();
   }
 
@@ -350,7 +343,7 @@ void parseSignalChoices(Tokenizer& tokenizer, CANDatabase& db) {
 
   unsigned long long frame_id = targetFrame.toUInt();
   if(!db.contains(frame_id) ||
-     !db.at(frame_id)->contains(targetSignal.image())) {
+     !db.at(frame_id).contains(targetSignal.image())) {
     warning("Cannot assign enum to signal \"" + targetFrame.image() + "/" +
             targetSignal.image() + "\"",
             tokenizer.lineCount());
@@ -358,6 +351,6 @@ void parseSignalChoices(Tokenizer& tokenizer, CANDatabase& db) {
   }
 
   db.at(frame_id)
-    ->at(targetSignal.image())
-    ->setChoices(targetChoices);
+    .at(targetSignal.image())
+    .setChoices(targetChoices);
 }

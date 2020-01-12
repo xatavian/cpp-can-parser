@@ -13,8 +13,17 @@
  */
 class CANFrame {
 public:
-  using container_type = std::map<unsigned int, std::shared_ptr<CANSignal>>;
-  using str_container_type = std::map<std::string, std::shared_ptr<CANSignal>>;
+  struct IDKey {
+    std::string str_key;
+    unsigned long long int_key;
+  };
+
+  struct IntIDKeyCompare {
+    bool operator()(const IDKey& k1, const IDKey& k2) const;
+  };
+
+
+  using container_type = std::map<IDKey, CANSignal, IntIDKeyCompare>;
   using iterator = container_type::iterator;
   using const_iterator = container_type::const_iterator;
   using reverse_iterator = container_type::reverse_iterator;
@@ -31,12 +40,13 @@ public:
    * @param dlc DLC of the frame
    * @param comment Optional comment for the frame
    */
-  CANFrame(const std::string& name, unsigned long long can_id, unsigned int dlc, unsigned int period = 0, const std::string& comment = "");
+  CANFrame(const std::string& name, unsigned long long can_id, unsigned int dlc, 
+           unsigned int period = 0, const std::string& comment = "");
 
-  CANFrame(const CANFrame&);
-  CANFrame& operator=(CANFrame);
-  CANFrame(CANFrame&&);
-  CANFrame& operator=(CANFrame&&);
+  CANFrame(const CANFrame&) = default;
+  CANFrame& operator=(const CANFrame&) = default;
+  CANFrame(CANFrame&&) = default;
+  CANFrame& operator=(CANFrame&&) = default;
 
 public:
   /**
@@ -77,26 +87,26 @@ public:
 
 public:
   /**
-   * @brief Fetches the signal with the given start bit.
+   * @brief Fetches the signal with the given name.
    * @see at
    */
-  std::shared_ptr<CANSignal> operator[](unsigned int start_bit) const;
-
+  const CANSignal& operator[](const std::string& name) const;
+  
   /**
    * @brief Fetches the signal with the given name.
    * @see at
    */
-  std::shared_ptr<CANSignal> operator[](const std::string& name) const;
+  CANSignal& operator[](const std::string& name);
 
   /**
    * @brief Fetches the signal with the given name.
    */
-  std::shared_ptr<CANSignal> at(const std::string& name) const;
-
+  const CANSignal& at(const std::string& name) const;
+  
   /**
-   * @brief Fetches the signal with the given start bit.
+   * @brief Fetches the signal with the given name.
    */
-  std::shared_ptr<CANSignal> at(unsigned int start_bit) const;
+  CANSignal& at(const std::string& name);
   
   /**
    * @return true if a signal with the given name is already registered with the current frame.
@@ -104,14 +114,9 @@ public:
   bool contains(const std::string& name) const;
 
   /**
-   * @return true if a signal with the given start bit is already registered with the current frame.
-   */
-  bool contains(unsigned int start_bit) const;
-
-  /**
    * @brief Registers the given signal with the frame.
    */
-  void addSignal(std::shared_ptr<CANSignal> signal);
+  void addSignal(const CANSignal& signal);
 
   /**
    * @brief Removes the signal with the given start bit 
@@ -151,9 +156,11 @@ private:
   unsigned long long can_id_;
   unsigned int dlc_;
   unsigned int period_;
-  std::map<unsigned int, std::shared_ptr<CANSignal>> intIndex_; // Index by start bit
-  std::map<std::string, std::shared_ptr<CANSignal>> strIndex_; // Index by name
   std::string comment_;
+  
+  container_type map_;
+  std::map<unsigned, IDKey> intKeyIdx_; // Index by start bit
+  std::map<std::string, IDKey> strKeyIdx_; // Index by name
 };
 
 #endif

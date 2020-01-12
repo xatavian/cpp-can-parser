@@ -75,7 +75,7 @@ std::vector<SignalLayoutEntry> compute_layout(const CANFrame& src) {
     std::vector<SignalLayoutEntry> result;
 
     for(const auto& signal: src) {
-        const CANSignal& sig = *signal.second; 
+        const CANSignal& sig = signal.second; 
         int lr_start_bit, lr_end_bit;
 
         if(sig.endianness() == CANSignal::BigEndian) {
