@@ -56,6 +56,22 @@ public:
     }
   }
 
+  void add_row(const std::vector<TableData::TableCell>& row_data, bool is_full_line) {
+     data.push_back({ row_data, is_full_line });
+
+     if(is_full_line)
+      return;
+
+    size_t i = 0;
+    for(const TableData::TableCell& data: row_data) {
+      if(data.type == TableData::TableCell::String) {
+        columns_width[i] = std::max(data.s.size() + SPACE_AMOUNT, 
+                                    columns_width[i]);
+      }
+      i++;
+    }
+  }
+
   void render() const {
     // Some columns headers have been defined, we can create the table normally
     if(column_headers.size() > 0) {
@@ -69,10 +85,56 @@ public:
     
       // Render the data
       for(size_t i = 0; i < data.size(); i++) {
-        std::cout << COLUMN_SEPARATOR;
-        for(size_t j = 0; j < data[i].data.size(); j++) {
-          renderCell(data[i].data[j], columns_width[j]);
+        if(!data[i].is_full_line) {
           std::cout << COLUMN_SEPARATOR;
+          for(size_t j = 0; j < data[i].data.size(); j++) {
+            renderCell(data[i].data[j], columns_width[j]);
+            std::cout << COLUMN_SEPARATOR;
+          }
+        }
+        else {
+          unsigned in_line = 0;
+          bool prepare_new_line = true;
+          bool prepare_end_line = false;
+          for(size_t j = 0; j < data[i].data.size(); j++) {
+            if(prepare_new_line) {
+              std::cout << COLUMN_SEPARATOR << " ";
+              in_line += 2;
+              prepare_new_line = false;
+            }
+
+            if(in_line + data[i].data[j].s.size() < total_width - 2) {
+              std::cout << data[i].data[j].s;
+              in_line +=  data[i].data[j].s.size();
+            }
+            else {
+              std::string substr = data[i].data[j].s.substr(0, total_width - in_line - 5);
+              std::cout << substr << "...";
+
+              in_line += substr.size() + 3;
+              prepare_end_line = true;
+            }
+
+            if(j == data[i].data.size() - 1) {
+              prepare_end_line = true;
+            }
+            else {
+              in_line += 2;
+              std::cout << ", ";
+            }
+
+            if(prepare_end_line) {
+              std::cout << std::string(total_width - in_line, ' ') << COLUMN_SEPARATOR;
+              prepare_end_line = false;
+              prepare_new_line = true;
+              in_line = 0;
+
+              // Newline if there are still data to print
+              if(j < data[i].data.size() - 1) {
+                std::cout << std::endl;
+              }
+            }
+          }
         }
 
         if(i < data.size() - 1 || add_final_ls) {
@@ -207,28 +269,16 @@ void print_frame_impl(const CANFrame& frame) {
   }
 }
 
-void print_signal_impl(const CANSignal& sig) {
-  std::cout << "SIGNAL[" << sig.name() << "]: " << std::endl;
-  std::cout << "\tstart bit:\t" << sig.start_bit() << std::endl;
-  std::cout << "\tlength:\t\t" << sig.length() << std::endl;
-  std::cout << "\tendianness:\t\t" << ((sig.endianness() == CANSignal::BigEndian) 
-                                      ? "BigEndian" : "LittleEndian") << std::endl;
-  std::cout << "\tsignedness:\t\t" << ((sig.signedness() == CANSignal::Signed) 
-                                      ? "Signed" : "Unsigned") << std::endl;
-  std::cout << "\tscale:\t" << sig.scale() << std::endl;
-  std::cout << "\toffset:\t" << sig.offset() << std::endl;
-  std::cout << "\trange:\t" << sig.range().min << " -> " << sig.range().max << std::endl;
-
-
-  if(sig.choices().size() > 0) {
-    std::cout << "\tchoices:" << std::endl;
-    
-    for(const auto& choice: sig.choices()) {
-      std::string result = "";
-      result += std::to_string(choice.first) + " -> \"" + choice.second + "\", ";
-      std::cout << "\t\t" << result << std::endl;
-    }
+std::vector<ConsoleTable::TableData::TableCell> createSignalChoicesVector(const CANSignal& sig) {
+  std::vector<ConsoleTable::TableData::TableCell> result;
+  
+  for(const auto& choice: sig.choices()) {
+    result.push_back(
+      createStr(std::to_string(choice.first) + " -> \"" + choice.second + "\"")
+    );
   }
+
+  return result;
 }
 
 void CppCAN::can_parse::print_single_frame(CANDatabase& db, uint32_t can_id) {
@@ -260,6 +310,10 @@ void CppCAN::can_parse::print_single_frame(CANDatabase& db, uint32_t can_id) {
       signal.endianness() == CANSignal::BigEndian ? createStr("BigEndian") : createStr("LittleEndian"),
       createStr("[" + std::to_string(signal.range().min) + ", " + std::to_string(signal.range().max) + "]")
     }, false);            
+
+    if(signal.choices().size() > 0) {
+      console_table.add_row(createSignalChoicesVector(signal), true);
+    }
   }
 
   summary_header.render();
