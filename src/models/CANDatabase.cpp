@@ -16,8 +16,9 @@ CANDatabase::CANDatabase(const CANDatabase& src):
   }
 }
 
-CANDatabase & CANDatabase::operator=(CANDatabase src) {
-  swap(*this, src);
+CANDatabase & CANDatabase::operator=(const CANDatabase& src) {
+  CANDatabase temp(src);
+  swap(temp, *this);
   return *this;
 }
 
