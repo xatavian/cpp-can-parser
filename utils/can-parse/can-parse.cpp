@@ -29,6 +29,7 @@ void showUsage(std::ostream& ostrm, char* program_name) {
   ostrm << "\t"              << std::setw(22) << ""                                << "if CAN ID is specified, prints the details of the given frame" << std::endl;
   ostrm << "\t"              << std::setw(22) << (CHECKFRAME_ACTION + " [CAN ID]") << "Check different properties of the CAN database" << std::endl;
   ostrm << "\t"              << std::setw(22) << ""                                << "if CAN ID is specified, print the check details of the given frame" << std::endl;
+  ostrm << "\t"              << std::setw(22) << "-h / --help"                     << "Print the present help message" << std::endl;
   ostrm << "Currently supported formats: DBC" << std::endl;
 }
 
