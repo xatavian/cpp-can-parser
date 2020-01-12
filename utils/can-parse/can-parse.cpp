@@ -19,12 +19,15 @@ enum CanParseAction {
 };
 
 static std::string CHECKFRAME_ACTION = "checkframe";
+static std::string PRINTFRAME_ACTION = "printframe";
 
-void showUsage(char* program_name) {
-  std::cerr << "Usage: " << program_name << " [ACTION] <path/to/file>" << std::endl;
-  std::cerr << "Possible actions: " << std::endl;
-  std::cerr << "\t" << CHECKFRAME_ACTION << "\tCheck different properties of the CAN database" << std::endl;
-  std::cerr << "Currently supported formats: DBC" << std::endl;
+void showUsage(std::ostream& ostrm, char* program_name) {
+  ostrm << "Usage: " << program_name << " [ACTION] <path/to/file>" << std::endl;
+  ostrm << "When no action is specified, defaults to " << PRINTFRAME_ACTION << std::endl;
+  ostrm << "Possible actions: " << std::endl;
+  ostrm << "\t" << PRINTFRAME_ACTION << "\tPrint the content of the CAN database" << std::endl;
+  ostrm << "\t" << CHECKFRAME_ACTION << "\tCheck different properties of the CAN database" << std::endl;
+  ostrm << "Currently supported formats: DBC" << std::endl;
 }
 
 
@@ -41,10 +44,13 @@ std::tuple<CanParseAction, std::string> extractAction(int argc, char** argv) {
   size_t i = 0;
   for(const std::string& arg : args) {
     // First argument, we check for potential actions
-    std::cout << "Arg: " << arg << std::endl;
     if(i++ == 0) {
       if(arg == CHECKFRAME_ACTION) {
         action = CheckAll;
+        continue;
+      }
+      else if(arg == PRINTFRAME_ACTION) {
+        action = PrintAll;
         continue;
       }
     }
@@ -76,12 +82,12 @@ int main(int argc, char** argv) {
   }
   catch(const CanParseException& e) {
     std::cerr << "Invalid use of the program: " << e.what() << std::endl;
-    showUsage(argv[0]);
+    showUsage(std::cerr, argv[0]);
     return 1;
   }
 
   if(action == Help) {
-    showUsage(argv[0]);
+    showUsage(std::cout, argv[0]);
     return 0;
   }
 
@@ -105,6 +111,10 @@ int main(int argc, char** argv) {
       check_all_frames(db);
       break;
 
+    case Help:
+      // Already handled before.
+      break;
+    
     default:
       std::cerr << "Acton not implemented yet." << std::endl;
       return 3;
