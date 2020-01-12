@@ -3,43 +3,6 @@
 #include <iostream>
 #include <iomanip>
 
-
-// The following helper classes have been taken from
-// https://stackoverflow.com/a/14861289/8147455
-template<typename charT, typename traits = std::char_traits<charT> >
-class center_helper {
-    std::basic_string<charT, traits> str_;
-public:
-    center_helper(std::basic_string<charT, traits> str) : str_(str) {}
-    template<typename a, typename b>
-    friend std::basic_ostream<a, b>& operator<<(std::basic_ostream<a, b>& s, const center_helper<a, b>& c);
-};
-
-template<typename charT, typename traits = std::char_traits<charT> >
-center_helper<charT, traits> centered(std::basic_string<charT, traits> str) {
-    return center_helper<charT, traits>(str);
-}
-
-// redeclare for std::string directly so we can support anything that implicitly converts to std::string
-center_helper<std::string::value_type, std::string::traits_type> centered(const std::string& str) {
-    return center_helper<std::string::value_type, std::string::traits_type>(str);
-}
-
-template<typename charT, typename traits>
-std::basic_ostream<charT, traits>& operator<<(std::basic_ostream<charT, traits>& s, const center_helper<charT, traits>& c) {
-    std::streamsize w = s.width();
-    if (w > c.str_.length()) {
-        std::streamsize left = (w + c.str_.length()) / 2;
-        s.width(left);
-        s << c.str_;
-        s.width(w - left);
-        s << "";
-    } else {
-        s << c.str_;
-    }
-    return s;
-}
-
 void print_info_separator(int level = 0) {
   static const char* level_0_separator = "##############";
   static const char* level_1_separator = "--------------";
@@ -99,20 +62,36 @@ void CppCAN::can_parse::print_single_frame(CANDatabase& db, uint32_t can_id) {
 
   print_frame_impl(frame);
   
-  /*
-  for(const auto& frame : db) {
-    print_info_separator(1);
-    
-    size_t j = 0;
-    for(const auto& sig : *frame.second) {
-      print_signal_impl(*sig.second);
-
-      if(j++ < frame.second->size() - 1)
-        print_info_separator(2);
-    }
-    
-    if(i++ < db.size() - 1)
-      print_info_separator();
+  print_info_separator(1);
+  
+  // First, explore the database to find "pretty-printing" parameters
+  int sig_name_maxsize = 15; // At least a reasonable column size
+  for(const auto& sig : frame) {
+    if(sig.second.name().size() > sig_name_maxsize)
+      sig_name_maxsize = sig.second.name().size() + 1;
   }
-  */
+
+  std::cout << std::left << std::setw(sig_name_maxsize) << "Signal name"
+            << std::setw(10) << "Start bit" 
+            << std::setw(9) << "Length" 
+            << std::setw(9) << "Scale" 
+            << std::setw(10) << "Offset" 
+            << std::setw(12) << "Signedness" 
+            << std::setw(15) << "Endianness" 
+            << std::setw(10) << "Range" 
+            << std::endl;
+
+  for(const auto& sig : frame) {
+    const CANSignal& signal = sig.second;
+    std::cout << std::left << std::setw(sig_name_maxsize) << signal.name()
+              << std::setw(10) << signal.start_bit()
+              << std::setw(9) << signal.length() 
+              << std::setw(9) << std::setprecision(3) << signal.scale() 
+              << std::setw(10) << std::setprecision(3) << signal.offset() 
+              << std::setw(12) << ((signal.signedness() == CANSignal::Signed) ? "Signed" : "Unsigned")
+              << std::setw(15) << ((signal.endianness() == CANSignal::BigEndian) ? "BigEndian" : "LittleEndian")
+              << std::setw(10) << ("[" + std::to_string(signal.range().min) + ", " + std::to_string(signal.range().max) + "]")
+              << std::endl;              
+  }
+  
 }

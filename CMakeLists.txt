@@ -24,5 +24,6 @@ target_include_directories(cpp_can_parser
 add_executable(can-parse 
 	utils/can-parse/can-parse.cpp
 	utils/can-parse/print-frame.cpp
+	utils/can-parse/print-single-frame.cpp
 	utils/can-parse/check-frame.cpp)
 target_link_libraries(can-parse cpp_can_parser)
