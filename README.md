@@ -12,7 +12,32 @@ C++ CAN Parser currently is compiled as a static library.
 
 ## can-parse
 
-`can-parse` is a utility program that allows you to parse the content of a CAN database which is then output to the standard output. You can use it to see if the file content is valid or explore the content of the database.
+`can-parse` is a utility program that allows you to parse the content of a CAN database which is then output to the standard output. 
 
+Different uses of `can-parse` are possible, mainly 4 operations are included in `can-parse`:
+* Print a summary of the whole database
+* Print a detailed view of a single entry of the database (very basic implementation for now)
+  * CAN ID, DLC, Period, Comment
+  * Signals' description
+    * Name
+    * Start bit
+    * Length
+    * Endianness
+    * Signedness
+* Check the integrity of the whole database (a summary is given) (very basic implementation for now)
+* Check the integrity of a single frame (a detailed report is given) (very basic implementation for now)
+
+The Command_Line Interface is very easy to use !
+
+```bash
+Usage: ./can-parse [ACTION [ARGUMENTS]] <path/to/file>
+When no action is specified, defaults to printframe
+Possible actions: 
+        printframe [CAN ID]   Print the content of the CAN database
+                              if CAN ID is specified, prints the details of the given frame
+        checkframe [CAN ID]   Check different properties of the CAN database
+                              if CAN ID is specified, print the check details of the given frame
+        -h / --help           Print the present help message
+```
 ## Supported standards:
 * DBC (in progress)
