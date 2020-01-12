@@ -10,14 +10,9 @@ class CANDatabase;
 namespace CppCAN {
 namespace can_parse {
     /**
-     * @brief Prints a single frame selected by its frame name
-    void printSingleFrame(CANDatabase& db, const std::string& frame_name);
-     */
-    
-    /**
      * @brief Prints a single frame selected by its CAN ID.
-    void printSingleFrame(CANDatabase& db, uint64_t can_id);
      */
+    void print_single_frame(CANDatabase& db, uint32_t can_id);
 
     /**
      * @brief Prints all the frames of the database
