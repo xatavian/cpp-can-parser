@@ -13,17 +13,7 @@
  */
 class CANFrame {
 public:
-  struct IDKey {
-    std::string str_key;
-    unsigned long long int_key;
-  };
-
-  struct IntIDKeyCompare {
-    bool operator()(const IDKey& k1, const IDKey& k2) const;
-  };
-
-
-  using container_type = std::map<IDKey, CANSignal, IntIDKeyCompare>;
+  using container_type = std::map<std::string, CANSignal>;
   using iterator = container_type::iterator;
   using const_iterator = container_type::const_iterator;
   using reverse_iterator = container_type::reverse_iterator;
@@ -119,11 +109,6 @@ public:
   void addSignal(const CANSignal& signal);
 
   /**
-   * @brief Removes the signal with the given start bit 
-   */
-  void removeSignal(unsigned int start_bit);
-
-  /**
    * @brief Removes the signal associated with the given name
    */
   void removeSignal(const std::string& name);
@@ -159,8 +144,6 @@ private:
   std::string comment_;
   
   container_type map_;
-  std::map<unsigned, IDKey> intKeyIdx_; // Index by start bit
-  std::map<std::string, IDKey> strKeyIdx_; // Index by name
 };
 
 #endif

@@ -36,27 +36,15 @@ void CANFrame::setComment(const std::string& comment) {
 }
 
 bool CANFrame::contains(const std::string& name) const {
-  return strKeyIdx_.find(name) != strKeyIdx_.end();
+  return map_.find(name) != map_.end();
 }
 
 const CANSignal& CANFrame::at(const std::string& name) const {
-  try {
-    const IDKey& map_key = strKeyIdx_.at(name);
-    return map_.at(map_key);
-  }
-  catch(const std::out_of_range& e) {
-    throw;
-  }
+  return map_.at(name);
 }
 
 CANSignal& CANFrame::at(const std::string& name) {
-  try {
-    const IDKey& map_key = strKeyIdx_.at(name);
-    return map_.at(map_key);
-  }
-  catch(const std::out_of_range& e) {
-    throw;
-  }  
+  return map_.at(name); 
 }
 
 const CANSignal& CANFrame::operator[](const std::string& name) const {
@@ -67,27 +55,20 @@ CANSignal& CANFrame::operator[](const std::string& name) {
   return at(name);
 }
 
-void CANFrame::addSignal(const CANSignal& signal) {
-  IDKey map_key = { signal.name(), signal.start_bit() };
-  
-  map_.insert(std::make_pair(map_key, signal));
-  intKeyIdx_.insert(std::make_pair( signal.start_bit(), map_key));
-  strKeyIdx_.insert(std::make_pair( signal.name(), map_key));
+void CANFrame::addSignal(const CANSignal& signal) {  
+  map_.insert(std::make_pair(signal.name(), signal));
 }
 
 void CANFrame::removeSignal(const std::string& name) {
-  try {
-    const IDKey& map_key = strKeyIdx_.at(name);
 
-    intKeyIdx_.erase(intKeyIdx_.find(map_key.int_key));
-    strKeyIdx_.erase(strKeyIdx_.find(map_key.str_key));
-    map_.erase(map_.find(map_key));
-  }
-  catch(const std::out_of_range&) {
+  auto ite = map_.find(name);
+  if(ite == map_.end()) {
     std::string excepText = "Cannot remove signal with name \"" + name + 
                             "\" from frame \"" + this->name() + "\"";
     throw std::out_of_range(excepText);
   }
+  
+  map_.erase(ite);
 }
 
 CANFrame::iterator CANFrame::begin() {
@@ -155,23 +136,6 @@ std::size_t CANFrame::size() const
 
 void CANFrame::clear() {
   map_.clear();
-  intKeyIdx_.clear();
-  strKeyIdx_.clear();
-}
-
-void CANFrame::removeSignal(unsigned int start_bit) {
-  try {
-    const IDKey& map_key = intKeyIdx_.at(start_bit);
-
-    intKeyIdx_.erase(intKeyIdx_.find(map_key.int_key));
-    strKeyIdx_.erase(strKeyIdx_.find(map_key.str_key));
-    map_.erase(map_.find(map_key));
-  }
-  catch(const std::out_of_range&) {
-    std::string excepText = "Cannot remove signal with start bit " + std::to_string(start_bit) +
-                            "\" from frame \"" + this->name() + "\"";
-    throw std::out_of_range(excepText);
-  }
 }
 
 void swap(CANFrame & first, CANFrame & second) {
@@ -180,11 +144,5 @@ void swap(CANFrame & first, CANFrame & second) {
   std::swap(first.dlc_, second.dlc_);
   std::swap(first.period_, second.period_);
   std::swap(first.map_, second.map_);
-  std::swap(first.intKeyIdx_, second.intKeyIdx_);
-  std::swap(first.strKeyIdx_, second.strKeyIdx_);
   std::swap(first.comment_, second.comment_);
-}
-
-bool CANFrame::IntIDKeyCompare::operator()(const IDKey& k1, const IDKey& k2) const {
-  return k1.int_key < k2.int_key;
 }
