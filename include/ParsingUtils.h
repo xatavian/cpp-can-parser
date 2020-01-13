@@ -9,15 +9,15 @@
 void throwError(const std::string& category, const std::string& description,
                 unsigned long long line) {
   throw CANDatabaseException(
-    category + ": " + description + " at line " + std::to_string(line)
+    category + ": " + description + " at line " + std::to_string(line + 1)
   );
 }
 
 void warning(const std::string& description, unsigned long long line) {
-  std::cout << "WARNING: "
+  std::cerr << "WARNING: "
             << description
             << " at line "
-            << line
+            << line + 1
             << std::endl;
 }
 
