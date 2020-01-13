@@ -27,7 +27,7 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
   
   // Handle global comment
   Token currentToken = tokenizer.getNextToken();
-  if (currentToken.type() == Token::Literal) {
+  if (currentToken == Token::StringLiteral) {
     skipIf(tokenizer, ";");
     return;
   }
@@ -38,43 +38,43 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
     warning("Frame " + fId + " does not exist", line);
   };
 
-  if(commentType.image() == "SG_") {
+  if(commentType == "SG_") {
     targetFrame = checkTokenType(tokenizer, Token::Number);
     targetSignal = checkTokenType(tokenizer, Token::Identifier);
-    commentValue = checkTokenType(tokenizer, Token::Literal);
+    commentValue = checkTokenType(tokenizer, Token::StringLiteral);
     skipIf(tokenizer, ";");
 
     auto frame_id = targetFrame.toUInt();
     if(!db.contains(frame_id)) {
-      wWrongFrameId(targetFrame.image(), tokenizer.lineCount());
+      wWrongFrameId(targetFrame.image, tokenizer.lineCount());
       return;
     }
-    else if(!db.at(frame_id).contains(targetSignal.image())) {
-      warning("Frame " + targetFrame.image() +
-              "has no signal \"" + targetSignal.image() + "\"",
+    else if(!db.at(frame_id).contains(targetSignal.image)) {
+      warning("Frame " + targetFrame.image +
+              "has no signal \"" + targetSignal.image + "\"",
             tokenizer.lineCount());
       return;
     }
     db.at(frame_id)
-      .at(targetSignal.image())
-      .setComment(commentValue.image());
+      .at(targetSignal.image)
+      .setComment(commentValue.image);
   }
-  else if(commentType.image() == "BO_") {
+  else if(commentType == "BO_") {
     targetFrame = checkTokenType(tokenizer, Token::Number);
-    commentValue = checkTokenType(tokenizer, Token::Literal);
+    commentValue = checkTokenType(tokenizer, Token::StringLiteral);
     skipIf(tokenizer, ";");
 
     auto frame_id = targetFrame.toUInt();
     if(!db.contains(frame_id)) {
-      wWrongFrameId(targetFrame.image(), tokenizer.lineCount());
+      wWrongFrameId(targetFrame.image, tokenizer.lineCount());
       return;
     }
 
-    db.at(frame_id).setComment(commentValue.image());
+    db.at(frame_id).setComment(commentValue.image);
   }
   else {
     warning("Unsupported comment operation \"" +
-            commentType.image() + "\"",
+            commentType.image + "\"",
             tokenizer.lineCount());
     tokenizer.skipUntil(";");
   }
@@ -84,19 +84,19 @@ void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
   Token infoType;
   assertToken(tokenizer, "BA_");
 
-  infoType = checkTokenType(tokenizer, Token::Literal);
-  if(infoType.image() == "GenMsgCycleTime" || infoType.image() == "CycleTime") {
+  infoType = checkTokenType(tokenizer, Token::StringLiteral);
+  if(infoType == "GenMsgCycleTime" || infoType == "CycleTime") {
     skipIf(tokenizer, "BO_");
     Token frameId = checkTokenType(tokenizer, Token::Number);
     Token period = checkTokenType(tokenizer, Token::Number);
     skipIf(tokenizer, ";");
 
-    if(period.image()[0] == '-') {
+    if(period == Token::NegativeNumber) {
       warning("cannot set negative period",
               tokenizer.lineCount());
       return;
     }
-    else if(frameId.image()[0] == '-') {
+    else if(frameId == Token::NegativeNumber) {
       warning("invalid frame id",
               tokenizer.lineCount());
       return;
@@ -114,7 +114,7 @@ void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
     }
   }
   else {
-    std::cout << "WARNING: Unrecognized BA_ command " << infoType.image()
+    std::cout << "WARNING: Unrecognized BA_ command " << infoType.image
               << " at line " << tokenizer.lineCount()
               << std::endl;
     tokenizer.skipUntil(";");
@@ -136,7 +136,7 @@ void parseNewSymbols(Tokenizer& tokenizer) {
   skipIf(tokenizer, ":");
   
   Token token = tokenizer.getNextToken();
-  while (ns_choices.find(token.image()) != ns_choices.end()) {
+  while (ns_choices.count(token.image) > 0) {
     token = tokenizer.getNextToken();
   }
   tokenizer.saveToken(token);
@@ -148,13 +148,13 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
 
   CANDatabase result(name);
 
-  while(currentToken.type() != Token::Eof) {
-    // std::cout << currentToken.image() << std::endl;
-    if (currentToken.image() == "VERSION") {
-      currentToken = checkTokenType(tokenizer, Token::Literal);
-      std::cout << "DBC version: " << currentToken.image() << std::endl;
+  while(currentToken != Token::Eof) {
+    // std::cout << currentToken.image << std::endl;
+    if (currentToken == "VERSION") {
+      currentToken = checkTokenType(tokenizer, Token::StringLiteral);
+      // std::cout << "DBC version: " << currentToken.image << std::endl;
     }
-    else if (currentToken.image() == "BU_") {
+    else if (currentToken == "BU_") {
       std::set<std::string> ecus = parseECUs(tokenizer);
       std::cout << "The following ECUs have been defined:" << std::endl;
       for (const auto& ecu : ecus) {
@@ -162,32 +162,32 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
       }
       std::cout << std::endl;
     }
-    else if (currentToken.image() == "BO_") {
+    else if (currentToken == "BO_") {
       result.addFrame(parseFrame(tokenizer));
     }
-    else if (currentToken.image() == "SG_") {
+    else if (currentToken == "SG_") {
       parseSignal(tokenizer);
       std::cout << "Identified signal outside frame -> WARNING !!! (line "
         << tokenizer.lineCount() << ")" << std::endl;
     }
-    else if (currentToken.image() == "CM_") {
+    else if (currentToken == "CM_") {
       addComment(tokenizer, result);
       // TODO: Handle comments
     }
-    else if (currentToken.image() == "BA_") {
+    else if (currentToken  == "BA_") {
       addBADirective(tokenizer, result);
     }
-    else if (currentToken.image() == "VAL_") {
+    else if (currentToken == "VAL_") {
       parseSignalChoices(tokenizer, result);
     }
-    else if (currentToken.image() == "NS_") {
+    else if (currentToken == "NS_") {
       parseNewSymbols(tokenizer);
     }
-    else if (currentToken.image() == "BS_") {
+    else if (currentToken == "BS_") {
       skipIf(tokenizer, ":");
 
       currentToken = tokenizer.getNextToken();
-      if (currentToken.type() != Token::Number)
+      if (currentToken != Token::Number)
         continue;
 
       Token baudrate = checkCurrentTokenType(currentToken, Token::Number, tokenizer.lineCount());
@@ -199,7 +199,7 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
       // TODO: handle the statement
     }
     else {
-      std::cerr << currentToken.image() << " is not a valid statement (yet). The statement is skipped." << std::endl;
+      std::cerr << currentToken.image << " is not a valid statement (yet). The statement is skipped." << std::endl;
       tokenizer.skipUntil(";");
     }
     currentToken = tokenizer.getNextToken();
@@ -222,7 +222,7 @@ CANSignal parseSignal(Tokenizer& tokenizer) {
   length = checkTokenType(tokenizer, Token::Number);
   skipIf(tokenizer, "@");
   endianess = checkTokenType(tokenizer, Token::Number);
-  signedness = checkTokenType(tokenizer, Token::Sign);
+  signedness = checkTokenType(tokenizer, Token::ArithmeticSign);
   skipIf(tokenizer, "(");
   scale = checkTokenType(tokenizer, Token::Number);
   skipIf(tokenizer, ",");
@@ -233,27 +233,27 @@ CANSignal parseSignal(Tokenizer& tokenizer) {
   skipIf(tokenizer, "|");
   max = checkTokenType(tokenizer, Token::Number);
   skipIf(tokenizer, "]");
-  unit = checkTokenType(tokenizer, Token::Literal);
+  unit = checkTokenType(tokenizer, Token::StringLiteral);
    
   targetECU = checkTokenType(tokenizer, Token::Identifier); // Ignored for now
   Token currentToken = tokenizer.getNextToken();
-  while (currentToken.image() == ",") {
+  while (currentToken == ",") {
     targetECU = checkTokenType(tokenizer, Token::Identifier);
     currentToken = tokenizer.getNextToken();
   }
 
-  if (currentToken.type() != Token::Eof)
+  if (currentToken != Token::Eof)
     tokenizer.saveToken(currentToken);
 
   return CANSignal(
-    signalName.image(),
-    std::stoul(startBit.image()),
-    std::stoul(length.image()),
-    std::stof(scale.image()),
-    std::stof(offset.image()),
-    signedness.image() == "-" ? CANSignal::Signed : CANSignal::Unsigned,
-    endianess.image() == "0" ? CANSignal::BigEndian : CANSignal::LittleEndian,
-    CANSignal::Range::fromString(min.image(), max.image())
+    signalName.image,
+    startBit.toUInt(),
+    length.toUInt(),
+    scale.toDouble(),
+    offset.toDouble(),
+    signedness == "-" ? CANSignal::Signed : CANSignal::Unsigned,
+    endianess == "0" ? CANSignal::BigEndian : CANSignal::LittleEndian,
+    CANSignal::Range::fromString(min.image, max.image)
   );
 }
 
@@ -274,16 +274,16 @@ CANFrame parseFrame(Tokenizer& tokenizer) {
   ecu = checkTokenType(tokenizer, Token::Identifier);
 
   CANFrame result(
-    name.image(), id.toUInt(), dlc.toUInt());
+    name.image, id.toUInt(), dlc.toUInt());
 
   Token currentToken = tokenizer.getNextToken();
 
-  while(currentToken.image() == "SG_") {
+  while(currentToken == "SG_") {
     result.addSignal(parseSignal(tokenizer));
     currentToken = tokenizer.getNextToken();
   }
 
-  if(currentToken.type() != Token::Eof)
+  if(currentToken != Token::Eof)
     tokenizer.saveToken(currentToken);
 
   return result;
@@ -299,13 +299,13 @@ std::set<std::string> parseECUs(Tokenizer& tokenizer) {
   Token currentToken = checkTokenType(tokenizer, Token::Identifier);
 
   // Looking for all the identifiers on the same line
-  while(currentToken.type() != Token::Eof &&
+  while(currentToken != Token::Eof &&
         currentLine == tokenizer.lineCount()) {
-    result.insert(currentToken.image());
+    result.insert(currentToken.image);
     currentToken = checkTokenType(tokenizer, Token::Identifier);
   }
 
-  if(currentToken.type() != Token::Eof)
+  if(currentToken != Token::Eof)
     tokenizer.saveToken(currentToken);
 
   return result;
@@ -324,16 +324,16 @@ void parseSignalChoices(Tokenizer& tokenizer, CANDatabase& db) {
   targetSignal = checkTokenType(tokenizer, Token::Identifier);
 
   Token currentToken = tokenizer.getNextToken();
-  while(currentToken.image() != ";" &&
-        currentToken.type() != Token::Eof) {
+  while(currentToken != ";" &&
+        currentToken != Token::Eof) {
     currentVal = checkCurrentTokenType(currentToken, Token::Number,
                                        tokenizer.lineCount());
-    currentLabel = checkTokenType(tokenizer, Token::Literal);
+    currentLabel = checkTokenType(tokenizer, Token::StringLiteral);
 
     targetChoices.insert(
       std::make_pair(
         currentVal.toUInt(),
-        currentLabel.image()
+        currentLabel.image
       )
     );
 
@@ -343,14 +343,14 @@ void parseSignalChoices(Tokenizer& tokenizer, CANDatabase& db) {
 
   unsigned long long frame_id = targetFrame.toUInt();
   if(!db.contains(frame_id) ||
-     !db.at(frame_id).contains(targetSignal.image())) {
-    warning("Cannot assign enum to signal \"" + targetFrame.image() + "/" +
-            targetSignal.image() + "\"",
+     !db.at(frame_id).contains(targetSignal.image)) {
+    warning("Cannot assign enum to signal \"" + targetFrame.image + "/" +
+            targetSignal.image + "\"",
             tokenizer.lineCount());
     return;
   }
 
   db.at(frame_id)
-    .at(targetSignal.image())
+    .at(targetSignal.image)
     .setChoices(targetChoices);
 }

@@ -22,25 +22,25 @@ void warning(const std::string& description, unsigned long long line) {
 }
 
 void skipIf(Tokenizer& tokenizer, const std::string& token) {
-  if(tokenizer.getNextToken().image() == token)
+  if(tokenizer.getNextToken() == token)
     return;
 
   throwError(
     "Syntax error",
     "expected \"" + token + "\" but got \"" +
-      tokenizer.getCurrentToken().image() + "\"",
+    tokenizer.getCurrentToken().image + "\"",
     tokenizer.lineCount()
   );
 }
 
 void assertToken(const Tokenizer& tokenizer, const std::string& token) {
-  if(tokenizer.getCurrentToken().image() == token)
+  if(tokenizer.getCurrentToken() == token)
     return;
 
   throwError(
     "Syntax error",
     "expected \"" + token + "\" but got \"" +
-      tokenizer.getCurrentToken().image() + "\"",
+    tokenizer.getCurrentToken().image + "\"",
     tokenizer.lineCount()
   );
 }
@@ -48,12 +48,12 @@ void assertToken(const Tokenizer& tokenizer, const std::string& token) {
 
 Token checkCurrentTokenType(const Token& toCheck, Token::Type targetType,
                             unsigned long long line) {
-  if(toCheck.type() == targetType)
+  if(toCheck == targetType)
     return toCheck;
 
   throwError(
     "Syntax error",
-    "unexpected \"" + toCheck.image() + "\"",
+    "unexpected \"" + toCheck.image  + "\"",
     line
   );
 
@@ -64,12 +64,12 @@ Token checkCurrentTokenType(const Token& toCheck, Token::Type targetType,
 Token checkCurrentTokenType(const Token& toCheck,
                             const std::string& token,
                             unsigned long long line) {
-  if(toCheck.image() == token)
+  if(toCheck == token)
     return toCheck;
 
   throwError(
     "Syntax error",
-    "unexpected \"" + toCheck.image() + "\"",
+    "unexpected \"" + toCheck.image + "\"",
     line
   );
 
