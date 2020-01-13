@@ -102,7 +102,8 @@ Token Token::createNumber(const std::string& number, bool is_positive, bool is_f
 }
 //    END OF IMPLEMENTATION Token class
 
-Token Tokenizer::getCurrentToken() const {
+const Token&
+Tokenizer::getCurrentToken() const {
   return currentToken;
 }
 
@@ -131,11 +132,12 @@ char Tokenizer::getNextChar() {
   return currentChar;
 }
 
-Token Tokenizer::getNextToken() {
+const Token& Tokenizer::getNextToken() {
   if (tokenStack.size() > 0) {
     Token result = tokenStack.back();
     tokenStack.pop_back();
-    return result;
+    currentToken = result;
+    return currentToken;
   }
 
   if (!started) {

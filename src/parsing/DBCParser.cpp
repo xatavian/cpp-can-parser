@@ -17,32 +17,64 @@ void                       addComment(Tokenizer& tokenizer, CANDatabase& db);
 void                       parseSignalChoices(Tokenizer& tokenizer,
                                            CANDatabase& db);
 
+static std::string VERSION_TOKEN = "VERSION";
+static std::string BIT_TIMING_TOKEN = "BS_";
+static std::string NODE_DEF_TOKEN = "BU_";
+static std::string MESSAGE_DEF_TOKEN = "BO_";
+static std::string SIG_DEF_TOKEN = "SG_";
+static std::string SIG_VAL_DEF_TOKEN = "VAL_";
+static std::string ENV_VAR_TOKEN = "EV_";
+static std::string COMMENT_TOKEN = "CM_";
+static std::string ATTR_DEF_TOKEN = "BA_DEF_";
+static std::string ATTR_DEF_DEFAULT_TOKEN = "BA_DEF_DEF_";
+static std::string ATTR_VAL_TOKEN = "BA_";
+
+// Duplicates but I don't think it demands so much memory
+// anyway...
+static std::set<std::string> SUPPORTED_DBC_TOKENS = {
+  VERSION_TOKEN, BIT_TIMING_TOKEN, NODE_DEF_TOKEN, MESSAGE_DEF_TOKEN,
+  SIG_DEF_TOKEN, SIG_VAL_DEF_TOKEN, ENV_VAR_TOKEN, COMMENT_TOKEN,
+  ATTR_DEF_TOKEN, ATTR_DEF_DEFAULT_TOKEN, ATTR_VAL_TOKEN
+};
+
+static std::set<std::string> NS_TOKENS = {
+  "CM_", "BA_DEF_", "BA_", "VAL_", "CAT_DEF_", "CAT_", "FILTER", "BA_DEF_DEF_",
+  "EV_DATA_", "ENVVAR_DATA", "SGTYPE_", "SGTYPE_VAL_", "BA_DEF_SGTYPE_", "BA_SGTYPE_",
+  "SIG_TYPE_DEF_"
+};
+
+static std::set<std::string> UNSUPPORTED_DBC_TOKENS = {
+  "VAL_TABLE_", "BO_TX_BU_", "ENVVAR_DATA_",
+  "SGTYPE_", "SIG_GROUP_"
+}; 
+
+  
 void addComment(Tokenizer& tokenizer, CANDatabase& db) {
   Token commentType;
   Token commentValue;
   Token targetFrame;
   Token targetSignal;
 
-  assertToken(tokenizer, "CM_");
+  assert_current_token(tokenizer, COMMENT_TOKEN);
   
   // Handle global comment
   Token currentToken = tokenizer.getNextToken();
   if (currentToken == Token::StringLiteral) {
-    skipIf(tokenizer, ";");
+    assert_token(tokenizer, ";");
     return;
   }
 
-  commentType = checkCurrentTokenType(currentToken, Token::Identifier, tokenizer.lineCount());
+  commentType = assert_current_token(tokenizer, Token::Identifier);
 
   auto wWrongFrameId = [](const std::string& fId, unsigned long long line) {
     warning("Frame " + fId + " does not exist", line);
   };
 
-  if(commentType == "SG_") {
-    targetFrame = checkTokenType(tokenizer, Token::Number);
-    targetSignal = checkTokenType(tokenizer, Token::Identifier);
-    commentValue = checkTokenType(tokenizer, Token::StringLiteral);
-    skipIf(tokenizer, ";");
+  if(commentType == SIG_DEF_TOKEN) {
+    targetFrame = assert_token(tokenizer, Token::Number);
+    targetSignal = assert_token(tokenizer, Token::Identifier);
+    commentValue = assert_token(tokenizer, Token::StringLiteral);
+    assert_token(tokenizer, ";");
 
     auto frame_id = targetFrame.toUInt();
     if(!db.contains(frame_id)) {
@@ -59,10 +91,10 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
       .at(targetSignal.image)
       .setComment(commentValue.image);
   }
-  else if(commentType == "BO_") {
-    targetFrame = checkTokenType(tokenizer, Token::Number);
-    commentValue = checkTokenType(tokenizer, Token::StringLiteral);
-    skipIf(tokenizer, ";");
+  else if(commentType == MESSAGE_DEF_TOKEN) {
+    targetFrame = assert_token(tokenizer, Token::Number);
+    commentValue = assert_token(tokenizer, Token::StringLiteral);
+    assert_token(tokenizer, ";");
 
     auto frame_id = targetFrame.toUInt();
     if(!db.contains(frame_id)) {
@@ -82,14 +114,14 @@ void addComment(Tokenizer& tokenizer, CANDatabase& db) {
 
 void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
   Token infoType;
-  assertToken(tokenizer, "BA_");
+  assert_current_token(tokenizer, "BA_");
 
-  infoType = checkTokenType(tokenizer, Token::StringLiteral);
+  infoType = assert_token(tokenizer, Token::StringLiteral);
   if(infoType == "GenMsgCycleTime" || infoType == "CycleTime") {
-    skipIf(tokenizer, "BO_");
-    Token frameId = checkTokenType(tokenizer, Token::Number);
-    Token period = checkTokenType(tokenizer, Token::Number);
-    skipIf(tokenizer, ";");
+    assert_token(tokenizer, "BO_");
+    Token frameId = assert_token(tokenizer, Token::Number);
+    Token period = assert_token(tokenizer, Token::Number);
+    assert_token(tokenizer, ";");
 
     if(period == Token::NegativeNumber) {
       warning("cannot set negative period",
@@ -126,17 +158,11 @@ CANDatabase DBCParser::fromTokenizer(Tokenizer& tokenizer) {
 }
 
 void parseNewSymbols(Tokenizer& tokenizer) {
-  static std::set<std::string> ns_choices = {
-    "CM_", "BA_DEF_", "BA_", "VAL_", "CAT_DEF_", "CAT_", "FILTER", "BA_DEF_DEF_",
-    "EV_DATA_", "ENVVAR_DATA", "SGTYPE_", "SGTYPE_VAL_", "BA_DEF_SGTYPE_", "BA_SGTYPE_",
-    "SIG_TYPE_DEF_"
-  };
-  
-  assertToken(tokenizer, "NS_");
-  skipIf(tokenizer, ":");
+  assert_current_token(tokenizer, "NS_");
+  assert_token(tokenizer, ":");
   
   Token token = tokenizer.getNextToken();
-  while (ns_choices.count(token.image) > 0) {
+  while (NS_TOKENS.count(token.image) > 0) {
     token = tokenizer.getNextToken();
   }
   tokenizer.saveToken(token);
@@ -144,17 +170,19 @@ void parseNewSymbols(Tokenizer& tokenizer) {
 
 CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokenizer) {
   std::cout << "Parsing: " << std::endl;
-  Token currentToken = tokenizer.getNextToken();
 
   CANDatabase result(name);
 
-  while(currentToken != Token::Eof) {
+  while(!is_token(tokenizer, Token::Eof)) {
     // std::cout << currentToken.image << std::endl;
-    if (currentToken == "VERSION") {
-      currentToken = checkTokenType(tokenizer, Token::StringLiteral);
-      // std::cout << "DBC version: " << currentToken.image << std::endl;
+    if(is_current_token(tokenizer, "VERSION")) {
+      /*Token candb_version = */ assert_token(tokenizer, Token::StringLiteral);
+      // std::cout << "CANdb++ version: " << candb_version.image << std::endl;
     }
-    else if (currentToken == "BU_") {
+    else if(is_current_token(tokenizer, "NS_")) {
+      parseNewSymbols(tokenizer);
+    }
+    else if (is_current_token(tokenizer, "BU_")) {
       std::set<std::string> ecus = parseECUs(tokenizer);
       std::cout << "The following ECUs have been defined:" << std::endl;
       for (const auto& ecu : ecus) {
@@ -162,47 +190,43 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
       }
       std::cout << std::endl;
     }
-    else if (currentToken == "BO_") {
+    else if (is_current_token(tokenizer, "BO_")) {
       result.addFrame(parseFrame(tokenizer));
     }
-    else if (currentToken == "SG_") {
+    else if (is_current_token(tokenizer, "SG_")) {
       parseSignal(tokenizer);
       std::cout << "Identified signal outside frame -> WARNING !!! (line "
         << tokenizer.lineCount() << ")" << std::endl;
     }
-    else if (currentToken == "CM_") {
+    else if (is_current_token(tokenizer, "CM_")) {
       addComment(tokenizer, result);
       // TODO: Handle comments
     }
-    else if (currentToken  == "BA_") {
+    else if (is_current_token(tokenizer, "BA_")) {
       addBADirective(tokenizer, result);
     }
-    else if (currentToken == "VAL_") {
+    else if (is_current_token(tokenizer, "VAL_")) {
       parseSignalChoices(tokenizer, result);
     }
-    else if (currentToken == "NS_") {
-      parseNewSymbols(tokenizer);
-    }
-    else if (currentToken == "BS_") {
-      skipIf(tokenizer, ":");
+    else if (is_current_token(tokenizer, "BS_")) {
+      assert_token(tokenizer, ":");
 
-      currentToken = tokenizer.getNextToken();
-      if (currentToken != Token::Number)
+      if (is_token(tokenizer, Token::Number))
         continue;
 
-      Token baudrate = checkCurrentTokenType(currentToken, Token::Number, tokenizer.lineCount());
-      skipIf(tokenizer, ":");
-      Token btr1 = checkTokenType(tokenizer, Token::Number);
-      skipIf(tokenizer, ",");
-      Token btr2 = checkTokenType(tokenizer, Token::Number);
+      Token baudrate = assert_current_token(tokenizer, Token::PositiveNumber);
+      assert_token(tokenizer, ":");
+      Token btr1 = assert_token(tokenizer, Token::PositiveNumber);
+      assert_token(tokenizer, ",");
+      Token btr2 = assert_token(tokenizer, Token::PositiveNumber);
 
       // TODO: handle the statement
     }
     else {
+      Token currentToken = tokenizer.getCurrentToken();
       std::cerr << currentToken.image << " is not a valid statement (yet). The statement is skipped." << std::endl;
       tokenizer.skipUntil(";");
     }
-    currentToken = tokenizer.getNextToken();
   }
 
   return result;
@@ -213,32 +237,32 @@ CANSignal parseSignal(Tokenizer& tokenizer) {
         endianess, signedness, scale,
         offset, min, max, unit, targetECU;
 
-  assertToken(tokenizer, "SG_");
+  assert_current_token(tokenizer, "SG_");
 
-  signalName = checkTokenType(tokenizer, Token::Identifier);
-  skipIf(tokenizer, ":");
-  startBit = checkTokenType(tokenizer, Token::Number);
-  skipIf(tokenizer, "|");
-  length = checkTokenType(tokenizer, Token::Number);
-  skipIf(tokenizer, "@");
-  endianess = checkTokenType(tokenizer, Token::Number);
-  signedness = checkTokenType(tokenizer, Token::ArithmeticSign);
-  skipIf(tokenizer, "(");
-  scale = checkTokenType(tokenizer, Token::Number);
-  skipIf(tokenizer, ",");
-  offset = checkTokenType(tokenizer, Token::Number);
-  skipIf(tokenizer, ")");
-  skipIf(tokenizer, "[");
-  min = checkTokenType(tokenizer, Token::Number);
-  skipIf(tokenizer, "|");
-  max = checkTokenType(tokenizer, Token::Number);
-  skipIf(tokenizer, "]");
-  unit = checkTokenType(tokenizer, Token::StringLiteral);
+  signalName = assert_token(tokenizer, Token::Identifier);
+  assert_token(tokenizer, ":");
+  startBit = assert_token(tokenizer, Token::Number);
+  assert_token(tokenizer, "|");
+  length = assert_token(tokenizer, Token::Number);
+  assert_token(tokenizer, "@");
+  endianess = assert_token(tokenizer, Token::Number);
+  signedness = assert_token(tokenizer, Token::ArithmeticSign);
+  assert_token(tokenizer, "(");
+  scale = assert_token(tokenizer, Token::Number);
+  assert_token(tokenizer, ",");
+  offset = assert_token(tokenizer, Token::Number);
+  assert_token(tokenizer, ")");
+  assert_token(tokenizer, "[");
+  min = assert_token(tokenizer, Token::Number);
+  assert_token(tokenizer, "|");
+  max = assert_token(tokenizer, Token::Number);
+  assert_token(tokenizer, "]");
+  unit = assert_token(tokenizer, Token::StringLiteral);
    
-  targetECU = checkTokenType(tokenizer, Token::Identifier); // Ignored for now
+  targetECU = assert_token(tokenizer, Token::Identifier); // Ignored for now
   Token currentToken = tokenizer.getNextToken();
   while (currentToken == ",") {
-    targetECU = checkTokenType(tokenizer, Token::Identifier);
+    targetECU = assert_token(tokenizer, Token::Identifier);
     currentToken = tokenizer.getNextToken();
   }
 
@@ -263,15 +287,15 @@ CANFrame parseFrame(Tokenizer& tokenizer) {
   Token dlc;
   Token ecu;
 
-  assertToken(tokenizer, "BO_");
+  assert_current_token(tokenizer, "BO_");
 
-  id = checkTokenType(tokenizer, Token::Number);
-  name = checkTokenType(tokenizer, Token::Identifier);
+  id = assert_token(tokenizer, Token::Number);
+  name = assert_token(tokenizer, Token::Identifier);
 
-  skipIf(tokenizer, ":");
+  assert_token(tokenizer, ":");
 
-  dlc = checkTokenType(tokenizer, Token::Number);
-  ecu = checkTokenType(tokenizer, Token::Identifier);
+  dlc = assert_token(tokenizer, Token::Number);
+  ecu = assert_token(tokenizer, Token::Identifier);
 
   CANFrame result(
     name.image, id.toUInt(), dlc.toUInt());
@@ -292,17 +316,17 @@ CANFrame parseFrame(Tokenizer& tokenizer) {
 std::set<std::string> parseECUs(Tokenizer& tokenizer) {
   std::set<std::string> result;
 
-  assertToken(tokenizer, "BU_");
-  skipIf(tokenizer, ":");
+  assert_current_token(tokenizer, "BU_");
+  assert_token(tokenizer, ":");
   unsigned long long currentLine = tokenizer.lineCount();
 
-  Token currentToken = checkTokenType(tokenizer, Token::Identifier);
+  Token currentToken = assert_token(tokenizer, Token::Identifier);
 
   // Looking for all the identifiers on the same line
   while(currentToken != Token::Eof &&
         currentLine == tokenizer.lineCount()) {
     result.insert(currentToken.image);
-    currentToken = checkTokenType(tokenizer, Token::Identifier);
+    currentToken = assert_token(tokenizer, Token::Identifier);
   }
 
   if(currentToken != Token::Eof)
@@ -319,16 +343,15 @@ void parseSignalChoices(Tokenizer& tokenizer, CANDatabase& db) {
 
   std::map<unsigned int, std::string> targetChoices;
 
-  assertToken(tokenizer, "VAL_");
-  targetFrame = checkTokenType(tokenizer, Token::Number);
-  targetSignal = checkTokenType(tokenizer, Token::Identifier);
+  assert_current_token(tokenizer, "VAL_");
+  targetFrame = assert_token(tokenizer, Token::Number);
+  targetSignal = assert_token(tokenizer, Token::Identifier);
 
   Token currentToken = tokenizer.getNextToken();
   while(currentToken != ";" &&
         currentToken != Token::Eof) {
-    currentVal = checkCurrentTokenType(currentToken, Token::Number,
-                                       tokenizer.lineCount());
-    currentLabel = checkTokenType(tokenizer, Token::StringLiteral);
+    currentVal = assert_current_token(tokenizer, Token::Number);
+    currentLabel = assert_token(tokenizer, Token::StringLiteral);
 
     targetChoices.insert(
       std::make_pair(
@@ -339,7 +362,8 @@ void parseSignalChoices(Tokenizer& tokenizer, CANDatabase& db) {
 
     currentToken = tokenizer.getNextToken();
   }
-  checkCurrentTokenType(currentToken, ";", tokenizer.lineCount());
+
+  assert_current_token(tokenizer, ";");
 
   unsigned long long frame_id = targetFrame.toUInt();
   if(!db.contains(frame_id) ||

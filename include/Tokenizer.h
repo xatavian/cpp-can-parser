@@ -11,8 +11,8 @@ public:
   Tokenizer();
   virtual ~Tokenizer() = default;
   
-  Token getNextToken();
-  Token getCurrentToken() const;
+  const Token& getNextToken();
+  const Token& getCurrentToken() const;
   
   void skipLine();
   void skipUntil(const std::string& token);
