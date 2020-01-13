@@ -25,6 +25,8 @@ protected:
   char getNextChar();
   char getCurrentChar() const;
   
+  std::string parseNumber(bool& is_float);
+
 private:
   virtual char doGetNextChar() = 0;
 

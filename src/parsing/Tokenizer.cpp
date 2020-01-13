@@ -150,24 +150,22 @@ Token Tokenizer::getNextToken() {
     currentToken = Token(Token::Eof, "");
   }
   else if (isSeparator(currentChar)) {
-    currentToken = Token(Token::Separator, std::string(1, currentChar));
+    currentToken = Token::createSeparator(currentChar);
     currentChar = getNextChar();
   }
   else if (currentChar == '+') {
-    currentToken = Token(Token::ArithmeticSign, std::string(1, currentChar));
+    currentToken = Token::createArithmeticSign(currentChar);
     currentChar = getNextChar();
   }
   else if (currentChar == '-') {
     currentChar = getNextChar();
     if (!isDigit(currentChar))
-      currentToken = Token(Token::ArithmeticSign, "-");
+      currentToken = Token::createArithmeticSign('-');
     else { // Negative number
-      std::string literal = "-";
-      while (isDigit(currentChar) || currentChar == '.') {
-        literal += currentChar;
-        currentChar = getNextChar();
-      }
-      currentToken = Token(Token::Number, literal);
+      bool is_float;
+      std::string literal = "-" + parseNumber(is_float);
+      
+      currentToken = Token::createNumber(literal, false, is_float);
     }
   }
   else if (currentChar == '\"') {
@@ -190,20 +188,10 @@ Token Tokenizer::getNextToken() {
     currentToken = Token(Token::StringLiteral, literal);
   }
   else if (isDigit(currentChar)) {
-    std::string literal = std::string(1, currentChar);
-    currentChar = getNextChar();
+    bool is_float;
+    std::string literal = parseNumber(is_float);
 
-    while (isDigit(currentChar) || currentChar == '.' || currentChar == 'e') {
-      literal += currentChar;
-
-      if (currentChar == 'e') {
-        literal += getNextChar();
-      }
-      
-      currentChar = getNextChar();
-    }
-
-    currentToken = Token(Token::Number, literal);
+    currentToken = Token::createNumber(literal, true, is_float);
   }
   else if (isIdentifierStart(currentChar)) {
     std::string identifier = std::string(1, currentChar);
@@ -217,12 +205,9 @@ Token Tokenizer::getNextToken() {
     currentToken = Token(Token::Identifier, identifier);
   }
   else {
-    throw CANDatabaseException(
-      "Invalid character \"" +
-      std::string(1, currentChar) +
-      "\" encountered at line " +
-      std::to_string(lineCount())
-    );
+    std::string exceptStr = "Invalid character \"" + std::string(1, currentChar) +
+                            "\" encountered at line " + std::to_string(lineCount());
+    throw CANDatabaseException(exceptStr);
   }
 
   // std::cout << "Token: " << currentToken.image() << std::endl;
@@ -243,6 +228,43 @@ void Tokenizer::skipLine() {
   }
 }
 
+std::string Tokenizer::parseNumber(bool& is_float) {
+  std::string result(1, getCurrentChar());
+  
+  char currentChar = getNextChar();
+  is_float = false;
+
+  while (isDigit(currentChar) && !isEOF(currentChar)) {
+    result += currentChar;
+    currentChar = getNextChar();
+
+    if(currentChar == '.') {
+      is_float = true;
+      result += currentChar;
+      currentChar = getNextChar();
+    }
+    else if(currentChar == 'e') {
+      result += currentChar;
+      currentChar = getNextChar();
+      
+      // Plus "in the wild" are not considered to be part of a number
+      // They are only allowed after "e" (eg. 3e+002)
+      if(currentChar == '+') {
+        result += currentChar;
+        currentChar = getNextChar();
+      }
+      // Negative exposants always represent floating-point numbers
+      else if(currentChar == '-') {
+        result += currentChar;
+        is_float = true;
+        currentChar == getNextChar();
+      }
+    }
+  }
+
+  return result;
+}
+
 void Tokenizer::skipUntil(const std::string& token) {
   unsigned long long initLine = lineCount();
 
@@ -251,7 +273,7 @@ void Tokenizer::skipUntil(const std::string& token) {
     getNextToken();
   }
 
-  if(currentToken.type() == Token::Eof) {
+  if(currentToken.type == Token::Eof) {
     throw CANDatabaseException(
       "Error: due to an unrecognized (and badly formed) command at line " +
       std::to_string(initLine) +
