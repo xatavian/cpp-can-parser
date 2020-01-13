@@ -28,6 +28,59 @@ bool isEOF(char c) {
   return c == '\0';
 }
 
+// I decided to move the implementation of of the Token class
+// from Token.h to Tokenizer.cpp
+//    IMPLEMENTATION: Token class
+Token::Token()
+  : type(Token::Eof), image() {}
+
+Token::Token(Token::Type t, const std::string& i)
+  : type(t), image(i) { }
+
+bool Token::operator==(const std::string& other) const {
+  return image == other;
+}
+
+bool Token::operator==(Token::Type other) const {
+  if(type == Number) {
+    return other == Number || other == PositiveNumber || other == NegativeNumber;
+  }
+  else if(other == Number) {
+    return type == Number || type == PositiveNumber || type == NegativeNumber;
+  }
+
+  return type == other;
+}
+
+bool Token::operator==(const Token& other) const {
+  return (*this == other.image) && (*this == other.type);
+}
+
+bool Token::operator!=(const std::string& other) const {
+  return !(*this == other);
+}
+
+bool Token::operator!=(Token::Type other) const {
+  return !(*this == other);
+}
+
+bool Token::operator!=(const Token& other) const {
+  return !(*this == other);
+}
+
+unsigned long long Token::toUInt() const {
+  return std::stoul(image);
+}
+
+long long Token::toInt() const {
+  return std::stol(image);
+}
+
+double Token::toDouble() const {
+  return std::stod(image);
+}
+//    END OF IMPLEMENTATION Token class
+
 Token Tokenizer::getCurrentToken() const {
   return currentToken;
 }
@@ -80,13 +133,13 @@ Token Tokenizer::getNextToken() {
     currentChar = getNextChar();
   }
   else if (currentChar == '+') {
-    currentToken = Token(Token::Sign, std::string(1, currentChar));
+    currentToken = Token(Token::ArithmeticSign, std::string(1, currentChar));
     currentChar = getNextChar();
   }
   else if (currentChar == '-') {
     currentChar = getNextChar();
     if (!isDigit(currentChar))
-      currentToken = Token(Token::Sign, "-");
+      currentToken = Token(Token::ArithmeticSign, "-");
     else { // Negative number
       std::string literal = "-";
       while (isDigit(currentChar) || currentChar == '.') {
@@ -113,7 +166,7 @@ Token Tokenizer::getNextToken() {
       std::cout << "Error in literal parsing: reached EOF before literal end" << std::endl;
     }
 
-    currentToken = Token(Token::Literal, literal);
+    currentToken = Token(Token::StringLiteral, literal);
   }
   else if (isDigit(currentChar)) {
     std::string literal = std::string(1, currentChar);
@@ -172,8 +225,8 @@ void Tokenizer::skipLine() {
 void Tokenizer::skipUntil(const std::string& token) {
   unsigned long long initLine = lineCount();
 
-  while(currentToken.image() != token &&
-        currentToken.type() != Token::Eof) {
+  while(currentToken.image != token &&
+        currentToken.type != Token::Eof) {
     getNextToken();
   }
 
