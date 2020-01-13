@@ -77,7 +77,13 @@ std::tuple<CanParseAction, std::string, uint32_t> extractAction(int argc, char**
       check_args = false;
       
       try {
-        detail_frame = std::stoul(arg);
+        if(arg.compare(0, 2, "0x") == 0 || arg.compare(0, 2, "0X") == 0) {
+          detail_frame = std::stoul(arg, nullptr, 16);
+        }
+        else {
+          detail_frame = std::stoul(arg);
+        }
+        
         action = static_cast<CanParseAction>(static_cast<int>(action) + 1);
         continue;
       } catch(const std::logic_error& e) {
@@ -135,6 +141,19 @@ int main(int argc, char** argv) {
       print_all_frames(db);
       break;
 
+    case PrintOne:
+    {
+      try {
+        print_single_frame(db, detail_frame);
+      }
+      catch(const std::out_of_range&) {
+        std::cerr << "Cannot find the frame with ID " << std::hex << std::showbase
+                  << detail_frame << std::endl;
+        return 3; 
+      }
+    }
+    break;
+      
     case CheckAll:
       check_all_frames(db);
       break;
