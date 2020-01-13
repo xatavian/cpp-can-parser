@@ -112,7 +112,7 @@ C++ CAN Parser currently is compiled as a static library.
 
 Different uses of `can-parse` are possible, mainly 4 operations are included in `can-parse`:
 * Print a summary of the whole database
-* Print a detailed view of a single entry of the database (very basic implementation for now)
+* Print a detailed view of a single entry of the database
   * CAN ID, DLC, Period, Comment
   * Signals' description
     * Name
