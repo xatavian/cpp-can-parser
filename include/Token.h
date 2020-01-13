@@ -15,12 +15,32 @@ struct Token {
       Separator,
       PositiveNumber,
       NegativeNumber,
+      FloatingPointNumber,
       Number,
       Identifier,
       ArithmeticSign,
       Eof
   };
 
+  /**
+   * @return A Token representing an arithmetic sign
+   */
+  static Token createArithmeticSign(char src);
+  
+  /**
+   * @return A Token representing a separator
+   */
+  static Token createSeparator(char src);
+
+  /**
+   * The Token's type returned here depends on is_positive and is_float
+   * @param number The image of the number
+   * @param is_positive true if number represents a positive number
+   * @param is_float true if the number represents a floating-point number
+   * @return A Token representing a number
+   */
+  static Token createNumber(const std::string& number, bool is_positive, bool is_float);
+  
   /**
    * @brief Constructs an EOF token.
    */
@@ -50,7 +70,7 @@ struct Token {
   
   /**
    * If the token's type is Number or if other is Number,
-   * then it also matches PositiveNumber and NegativeNumber
+   * then it also matches PositiveNumber, NegativeNumber and FloatingPointNumber
    *  
    * @return true if the token's type is equal to other
    * @param other Type to compare

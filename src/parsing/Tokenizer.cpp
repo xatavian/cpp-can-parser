@@ -43,10 +43,12 @@ bool Token::operator==(const std::string& other) const {
 
 bool Token::operator==(Token::Type other) const {
   if(type == Number) {
-    return other == Number || other == PositiveNumber || other == NegativeNumber;
+    return other == Number || other == PositiveNumber || 
+           other == NegativeNumber || other == FloatingPointNumber;
   }
   else if(other == Number) {
-    return type == Number || type == PositiveNumber || type == NegativeNumber;
+    return type == Number || type == PositiveNumber || 
+           type == NegativeNumber || type == FloatingPointNumber;
   }
 
   return type == other;
@@ -78,6 +80,25 @@ long long Token::toInt() const {
 
 double Token::toDouble() const {
   return std::stod(image);
+}
+
+Token Token::createArithmeticSign(char src) {
+  return Token(ArithmeticSign, std::string(1, src));
+}
+
+Token Token::createSeparator(char src) {
+  return Token(Separator, std::string(1, src));
+}
+
+Token Token::createNumber(const std::string& number, bool is_positive, bool is_float) {
+  if(is_float) {
+    return Token(FloatingPointNumber, number);
+  }
+  else if(is_positive) {
+    return Token(PositiveNumber, number);
+  }
+
+  return Token(NegativeNumber, number);
 }
 //    END OF IMPLEMENTATION Token class
 
