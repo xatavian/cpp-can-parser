@@ -6,80 +6,33 @@
 #include <iostream>
 #include "CANDatabaseException.h"
 
-void throwError(const std::string& category, const std::string& description,
-                unsigned long long line) {
-  throw CANDatabaseException(
-    category + ": " + description + " at line " + std::to_string(line)
-  );
-}
+void throw_error(const std::string& category, const std::string& description,
+                unsigned long long line);
 
-void warning(const std::string& description, unsigned long long line) {
-  std::cout << "WARNING: "
-            << description
-            << " at line "
-            << line
-            << std::endl;
-}
+void warning(const std::string& description, unsigned long long line) ;
 
-void skipIf(Tokenizer& tokenizer, const std::string& token) {
-  if(tokenizer.getNextToken().image() == token)
-    return;
+const Token&
+assert_token(Tokenizer& tokenizer, const std::string& token);
 
-  throwError(
-    "Syntax error",
-    "expected \"" + token + "\" but got \"" +
-      tokenizer.getCurrentToken().image() + "\"",
-    tokenizer.lineCount()
-  );
-}
+const Token&
+assert_token(Tokenizer& tokenizer, Token::Type targetType);
 
-void assertToken(const Tokenizer& tokenizer, const std::string& token) {
-  if(tokenizer.getCurrentToken().image() == token)
-    return;
+const Token&
+assert_current_token(const Tokenizer& tokenizer, const std::string& token);
 
-  throwError(
-    "Syntax error",
-    "expected \"" + token + "\" but got \"" +
-      tokenizer.getCurrentToken().image() + "\"",
-    tokenizer.lineCount()
-  );
-}
+const Token&
+assert_current_token(const Tokenizer& tokenizer, Token::Type type);
 
+bool is_current_token(const Tokenizer& tokenizer, const std::string& token);
 
-Token checkCurrentTokenType(const Token& toCheck, Token::Type targetType,
-                            unsigned long long line) {
-  if(toCheck.type() == targetType)
-    return toCheck;
+bool is_current_token(const Tokenizer& tokenizer, Token::Type token);
 
-  throwError(
-    "Syntax error",
-    "unexpected \"" + toCheck.image() + "\"",
-    line
-  );
+bool is_token(Tokenizer& tokenizer, const std::string& token);
 
-  // Removes a compilation warning
-  return toCheck;
-}
+bool is_token(Tokenizer& tokenizer, Token::Type token);
 
-Token checkCurrentTokenType(const Token& toCheck,
-                            const std::string& token,
-                            unsigned long long line) {
-  if(toCheck.image() == token)
-    return toCheck;
+bool peek_token(Tokenizer& tokenizer, Token::Type type);
 
-  throwError(
-    "Syntax error",
-    "unexpected \"" + toCheck.image() + "\"",
-    line
-  );
+bool peek_token(Tokenizer& tokenizer, const std::string& token);
 
-  // Removes a compilation warning
-  return toCheck;
-}
-
-Token checkTokenType(Tokenizer& tokenizer, Token::Type targetType) {
-  return checkCurrentTokenType(tokenizer.getNextToken(),
-                               targetType,
-                               tokenizer.lineCount());
-}
 #endif

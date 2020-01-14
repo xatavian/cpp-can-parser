@@ -11,12 +11,13 @@ public:
   Tokenizer();
   virtual ~Tokenizer() = default;
   
-  Token getNextToken();
-  Token getCurrentToken() const;
+  const Token& getNextToken();
+  const Token& getCurrentToken() const;
   
   void skipLine();
   void skipUntil(const std::string& token);
   void saveToken(const Token& token);
+  void saveTokenIfNotEof(const Token& token);
 
   unsigned long long charCount() const;
   unsigned long long lineCount() const;
@@ -25,6 +26,8 @@ protected:
   char getNextChar();
   char getCurrentChar() const;
   
+  std::string parseNumber(bool& is_float);
+
 private:
   virtual char doGetNextChar() = 0;
 
