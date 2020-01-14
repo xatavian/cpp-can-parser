@@ -12,8 +12,9 @@ set(CPPPARSER_INCLUDE_DIRECTORY
 set(CPPPARSER_SRC_FILES
 	src/models/CANDatabase.cpp
 	src/models/CANFrame.cpp
-  	src/models/CANSignal.cpp
+  src/models/CANSignal.cpp
 	src/parsing/DBCParser.cpp
+	src/parsing/ParsingUtils.cpp
 	src/parsing/Tokenizer.cpp
 	src/analysis/CANFrameAnalysis.cpp)
 

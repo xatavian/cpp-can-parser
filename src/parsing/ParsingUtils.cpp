@@ -115,6 +115,26 @@ assert_current_token(const Tokenizer& tokenizer, Token::Type type) {
   return tokenizer.getCurrentToken();
 }
 
+bool peek_token(Tokenizer& tokenizer, Token::Type type) {
+  const Token& toCheck = tokenizer.getNextToken();
+  if(toCheck == type) {
+    return true;
+  }
+
+  tokenizer.saveToken(toCheck);
+  return false;
+}
+
+bool peek_token(Tokenizer& tokenizer, const std::string& type) {
+  const Token& toCheck = tokenizer.getNextToken();
+  if(toCheck == type) {
+    return true;
+  }
+
+  tokenizer.saveToken(toCheck);
+  return false;
+}
+
 void throw_error(const std::string& category, const std::string& description,
                 unsigned long long line) {
   throw CANDatabaseException(

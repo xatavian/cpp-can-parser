@@ -31,4 +31,8 @@ bool is_token(Tokenizer& tokenizer, const std::string& token);
 
 bool is_token(Tokenizer& tokenizer, Token::Type token);
 
+bool peek_token(Tokenizer& tokenizer, Token::Type type);
+
+bool peek_token(Tokenizer& tokenizer, const std::string& token);
+
 #endif

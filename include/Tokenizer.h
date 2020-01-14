@@ -17,6 +17,7 @@ public:
   void skipLine();
   void skipUntil(const std::string& token);
   void saveToken(const Token& token);
+  void saveTokenIfNotEof(const Token& token);
 
   unsigned long long charCount() const;
   unsigned long long lineCount() const;

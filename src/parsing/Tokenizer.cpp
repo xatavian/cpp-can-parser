@@ -123,6 +123,11 @@ Tokenizer::Tokenizer() :
   currentChar(0), currentToken(), started(false), addLine(false),
   charCnt(0), lineCnt(0) {}
 
+void Tokenizer::saveTokenIfNotEof(const Token& token) {
+  if(token != Token::Eof)
+    saveToken(token);
+}
+
 void Tokenizer::saveToken(const Token& token) {
   tokenStack.push_back(token);
 }
@@ -207,8 +212,8 @@ const Token& Tokenizer::getNextToken() {
     currentToken = Token(Token::Identifier, identifier);
   }
   else {
-    std::string exceptStr = "Invalid character \"" + std::string(1, currentChar) +
-                            "\" encountered at line " + std::to_string(lineCount());
+    std::string exceptStr = "Invalid character \"" + std::string(1, currentChar) + "\" "
+                            "(ascii " + std::to_string(currentChar) + ") encountered at line " + std::to_string(lineCount());
     throw CANDatabaseException(exceptStr);
   }
 
@@ -305,7 +310,7 @@ char FileTokenizer::doGetNextChar() {
     addLine = true;
   }
 
-  return result;
+  return result >= 0 ? result : 0;
 }
 
 
