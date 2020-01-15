@@ -18,8 +18,15 @@ set(CPPPARSER_SRC_FILES
 	src/parsing/Tokenizer.cpp
 	src/analysis/CANFrameAnalysis.cpp)
 
-add_library(cpp_can_parser STATIC ${CPPPARSER_SRC_FILES})
-target_include_directories(cpp_can_parser 
+set(CPP_CAN_PARSER_COMPILATION_TYPE SHARED)
+if(CPP_CAN_PARSER_USE_STATIC)
+	set(CPP_CAN_PARSER_COMPILATION_TYPE STATIC)
+endif()
+	
+add_library(cpp-can-parser 
+	${CPP_CAN_PARSER_COMPILATION_TYPE} 
+	${CPPPARSER_SRC_FILES})
+target_include_directories(cpp-can-parser 
 	PUBLIC ${CPPPARSER_INCLUDE_DIRECTORY})
 
 add_executable(can-parse 
@@ -27,4 +34,4 @@ add_executable(can-parse
 	utils/can-parse/print-frame.cpp
 	utils/can-parse/print-single-frame.cpp
 	utils/can-parse/check-frame.cpp)
-target_link_libraries(can-parse cpp_can_parser)
+target_link_libraries(can-parse cpp-can-parser)
