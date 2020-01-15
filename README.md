@@ -1,9 +1,25 @@
-# C++ CAN Parser
-
+C++ CAN Parser
+==============
 This project provides a C++ library that reads and parses [CAN](https://en.wikipedia.org/wiki/CAN_bus) databases which can then be analyzed for other purposes.
 
 Currently the library only understand a subset of the DBC file format. 
 
+Table of Contents
+=================
+
+- [C++ CAN Parser](#c-can-parser)
+- [Table of Contents](#table-of-contents)
+  - [Compile and include the library](#compile-and-include-the-library)
+    - [The public headers](#the-public-headers)
+    - [Compilation](#compilation)
+  - [Parsing a CAN database](#parsing-a-can-database)
+  - [The API](#the-api)
+    - [`CANSignal`](#cansignal)
+    - [`CANFrame`](#canframe)
+    - [`CANDatabase`](#candatabase)
+  - [can-parse](#can-parse)
+  - [Supported standards:](#supported-standards)
+  
 ## Compile and include the library
 
 ### The public headers
