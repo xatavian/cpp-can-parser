@@ -8,16 +8,6 @@
 
 using namespace DBCParser;
 
-CANSignal                  parseSignal(Tokenizer& tokenizer);
-CANFrame                   parseFrame(Tokenizer& tokenizer);
-std::set<std::string>      parseECUs(Tokenizer& tokenizer);
-void                       parseNewSymbols(Tokenizer& tokenizer);
-void                       addBADirective(Tokenizer& tokenizer,
-                                          CANDatabase& db);
-void                       addComment(Tokenizer& tokenizer, CANDatabase& db);
-void                       parseSignalChoices(Tokenizer& tokenizer,
-                                           CANDatabase& db);
-
 static std::string VERSION_TOKEN = "VERSION";
 static std::string NS_SECTION_TOKEN = "NS_";
 static std::string BIT_TIMING_TOKEN = "BS_";
@@ -380,6 +370,16 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
   parseValDescSection(tokenizer, result);
 
   while(!is_token(tokenizer, Token::Eof)) {
+    // We have a syntax error because we have a token which does not
+    // represent any command.
+    if(!is_dbc_token(tokenizer.getCurrentToken())) {
+      throw_error("Syntax error", 
+                  "Unexpected token \"" + tokenizer.getCurrentToken().image + "\"", 
+                  tokenizer.lineCount());
+    }
+
+    // We have a valid DBC instruction, but we ignore it because
+    // it is not in a valid position.
     warning("Unexpected token " + tokenizer.getCurrentToken().image + 
             " at line " + std::to_string(tokenizer.lineCount())     +
             " (maybe is it an unsupported instruction ? maybe is it a misplaced instruction ?)",
