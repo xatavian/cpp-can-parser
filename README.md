@@ -9,20 +9,21 @@ Table of Contents
 
 - [C++ CAN Parser](#c-can-parser)
 - [Table of Contents](#table-of-contents)
-  - [Compile and include the library](#compile-and-include-the-library)
-    - [The public headers](#the-public-headers)
-    - [Compilation](#compilation)
-  - [Parsing a CAN database](#parsing-a-can-database)
-  - [The API](#the-api)
-    - [`CANSignal`](#cansignal)
-    - [`CANFrame`](#canframe)
-    - [`CANDatabase`](#candatabase)
-  - [can-parse](#can-parse)
-  - [Supported standards:](#supported-standards)
+- [Compile and include the library](#compile-and-include-the-library)
+  - [The public headers](#the-public-headers)
+  - [Compilation](#compilation)
+- [Parsing a CAN database](#parsing-a-can-database)
+- [How to use the database](#how-to-use-the-database)
+  - [`CANSignal`](#cansignal)
+  - [`CANFrame`](#canframe)
+  - [`CANDatabase`](#candatabase)
+- [can-parse](#can-parse)
+- [Supported standards](#supported-standards)
   
-## Compile and include the library
+Compile and include the library
+===============================
 
-### The public headers
+## The public headers
 
 You need to put the public headers in an appropriate place:
 
@@ -33,7 +34,7 @@ your_project/
     |_ cpp-can-parser/ # <-- Put here the public headers
 ```
 
-### Compilation
+## Compilation
 
 cpp-can-parser is not a header-only library. I recommand CMake to include the library into your project:
 
@@ -59,7 +60,8 @@ cpp-can-parser is not provided with an already existing Makefile. You will still
 LD_FLAGS=-Lpath/to/the/library -lcpp-can-parser
 ```
 
-## Parsing a CAN database
+Parsing a CAN database
+======================
 
 The main feature of the library is the possibility of parsing a file representing the CAN database. There are several popular file formats and the list of the currently ones is available at the end of this README. 
 
@@ -89,7 +91,8 @@ One can see that `CANDatabase::fromFile()` can throw a CANDatabaseException. Thi
 If the data that you are using does not come from a file, it is also possible to use `CANDatabase::fromString("...")` which behaves just like its counterpart.
 
 
-## The API
+How to use the database
+=======================
 
 The library exposes three main kind of objects: 
 * `CANDatabase` : represents the whole database. It gatherse all the informations of the database such as the frames and their signals, but you can also find the filename from which the database was created (if applicable).
@@ -98,7 +101,7 @@ The library exposes three main kind of objects:
 
 All those classes try to behave the closest possible to STL containers. They notably implement all the required iterators methods so **they can be used in range-based for loops**
 
-### `CANSignal`
+## `CANSignal`
 
 Here are the most important properties of a `CANSignal` instance:
 
@@ -114,7 +117,7 @@ Here are the most important properties of a `CANSignal` instance:
  
 Sometimes the database also includes "enumerations", ie for given signals we associate string literals to values (example: 0 = Nothing, 1 = State 1, 2 = State 2). `choices()` allows to iterate through the signal's enumeration (if any).
  
-### `CANFrame`
+## `CANFrame`
 
 Here are the most important properties of a `CANFrame` instance:
 
@@ -136,7 +139,7 @@ for(const auto& sig : frame) {
 }
 ```
 
-### `CANDatabase`
+## `CANDatabase`
 
 Here are the most important properties of a `CANDatabase` instance:
 
@@ -155,7 +158,8 @@ for(const auto& frame : db) {
 }
 ```
 
-## can-parse
+can-parse
+=========
 
 `can-parse` is a utility program that allows you to parse the content of a CAN database which is then output to the standard output. 
 
@@ -196,5 +200,7 @@ To compile, just use the following instructions:
 
 There you got yourself a very nice installation of `can-parse` :) !
 
-## Supported standards:
+Supported standards
+===================
+
 * DBC (in progress)
