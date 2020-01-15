@@ -4,6 +4,45 @@ This project provides a C++ library that reads and parses [CAN](https://en.wikip
 
 Currently the library only understand a subset of the DBC file format. 
 
+## Compile and include the library
+
+### The public headers
+
+You need to put the public headers in an appropriate place:
+
+```
+your_project/
+  |_ src/ 
+  |_ include/
+    |_ cpp-can-parser/ # <-- Put here the public headers
+```
+
+### Compilation
+
+cpp-can-parser is not a header-only library. I recommand CMake to include the library into your project:
+
+```cmake
+# After including cpp-can-parser into your project's CMakeLists.txt...
+target_link_libraries(MyAwesomeProject cpp-can-parser)
+```
+
+By default, `cpp-can-parser` is linked as a shared object. If you want to use a static library, you can add `set(CPP_CAN_PARSER_USE_STATIC TRUE)` or set it at "command-line time": `cmake -DCPP_CAN_PARSER_USE_STATIC=TRUE ...`
+
+
+**If you are not using CMake to manage your whole project:**
+
+cpp-can-parser is not provided with an already existing Makefile. You will still need CMake to manage the compilation of the library and then include it with traditional means:
+
+```bash
+> cd cpp-can-parser
+> mkdir build && cd build
+> cmake .. && cmake --build . --target cpp-can-parser
+```
+
+```Makefile
+LD_FLAGS=-Lpath/to/the/library -lcpp-can-parser
+```
+
 ## Parsing a CAN database
 
 The main feature of the library is the possibility of parsing a file representing the CAN database. There are several popular file formats and the list of the currently ones is available at the end of this README. 
@@ -12,7 +51,7 @@ The main feature of the library is the possibility of parsing a file representin
 
 ```c++
 #include <iostream>
-#include "CANDatabase.h"
+#include "cpp-can-parser/CANDatabase.h"
 
 int main(int argc, char** argv) {
   try {
@@ -100,12 +139,6 @@ for(const auto& frame : db) {
 }
 ```
 
-## Compiling the project
-
-The project uses CMake to be compiled. It can also be used to easily include the library in your own project.
-
-C++ CAN Parser currently is compiled as a static library.
-
 ## can-parse
 
 `can-parse` is a utility program that allows you to parse the content of a CAN database which is then output to the standard output. 
@@ -135,5 +168,17 @@ Possible actions:
                               if CAN ID is specified, print the check details of the given frame
         -h / --help           Print the present help message
 ```
+
+**Compilation:**
+To compile, just use the following instructions:
+
+```bash
+> cd cpp-can-parser
+> mkdir build && cd build
+> cmake .. && cmake --build . --target can-parse 
+```
+
+There you got yourself a very nice installation of `can-parse` :) !
+
 ## Supported standards:
 * DBC (in progress)
