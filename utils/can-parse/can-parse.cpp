@@ -7,8 +7,6 @@
 #include "operations.h"
 #include <iomanip>
 
-using namespace CppCAN::can_parse;
-
 enum CanParseAction {
   None,
   PrintAll,
@@ -102,6 +100,8 @@ std::tuple<CanParseAction, std::string, uint32_t> extractAction(int argc, char**
 }
 
 int main(int argc, char** argv) {
+  using namespace CppCAN::can_parse;
+
   std::string src_file;
   CanParseAction action;
   uint32_t detail_frame;
@@ -121,9 +121,10 @@ int main(int argc, char** argv) {
   }
 
   CANDatabase db;
+  std::vector<CANDatabase::parsing_warning> warnings;
 
   try {
-     db = std::move(CANDatabase::fromFile(src_file));
+     db = std::move(CANDatabase::fromFile(src_file, &warnings));
   }
   catch (const CANDatabaseException& e) {
     std::cerr << "An error happened while parsing the database: " 
@@ -149,7 +150,7 @@ int main(int argc, char** argv) {
     break;
       
     case CheckAll:
-      check_all_frames(db);
+      check_all_frames(db, warnings);
       break;
 
     case Help:

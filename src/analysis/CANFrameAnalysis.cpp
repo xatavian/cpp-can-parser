@@ -25,6 +25,9 @@ struct SignalLayoutEntry {
     }
 
     SignalLayoutEntry(const SignalLayoutEntry&) = default;
+    SignalLayoutEntry& operator=(const SignalLayoutEntry&) = default;
+    SignalLayoutEntry(SignalLayoutEntry&&) = default;
+    SignalLayoutEntry& operator=(SignalLayoutEntry&&) = default;
 
     const CANSignal* src_signal;
     SignalRanges ranges;
@@ -65,8 +68,20 @@ SignalRanges little_endian_ranges(const CANSignal& src) {
     // which does not really represent anything in terms of layout. So we need
     // to compute the ranges for each byte individually anyway.
 
-    unsigned byteAnalyzed = 0;
+    unsigned bitsLeft = src.length();
     bool is_start_byte = 0;
+
+    for(unsigned current_byte = src.start_bit() / 8; bitsLeft > 0; current_byte++, is_start_byte = false) {
+        unsigned lbit = 7 -( src.start_bit() + bitsLeft);
+        unsigned rbit = 7 - src.start_bit();
+
+        // The static_cast are not "necessary" but it removes some warnings
+        result.push_back({ static_cast<uint8_t>(current_byte), 
+                           static_cast<uint8_t>(lbit),
+                           static_cast<uint8_t>(rbit) });
+
+        bitsLeft -= (rbit - lbit);
+    }
 
     return result;
 }
@@ -91,31 +106,33 @@ std::vector<SignalLayoutEntry> compute_layout(const CANFrame& src) {
     return result;
 }
 
+bool overlap(const SignalLayoutEntry& e1, const SignalLayoutEntry& e2) {
+  for(const SignalRange& r1 : e1.ranges) {
+    for(const SignalRange& r2: e2.ranges) {
+      // Find if r2 shares a SignalRange with the same byte with r1 
+      if(r1.byte != r2.byte)
+          continue;
+        
+      // Now we know that the SignalRange(s) share a common byte
+        
+      // ordered.first is the leftmost SignalRange in the byte
+      // ordered.second is the rightmost SignalRange in the byte
+      auto ordered = std::minmax(r1, r2, [](const SignalRange& r, const SignalRange& rr) {
+          return r.lr_start_bit < rr.lr_start_bit;
+      });
+
+      // No overlapping if the last bit of the leftmost is before the first
+      // bit of the rightmost.
+      if(ordered.first.lr_end_bit < ordered.second.lr_start_bit)
+        return true;
+    }
+  }
+
+  return false;
+}
+
 bool CppCAN::analysis::is_frame_layout_ok(const CANFrame& src) {
     auto layout = compute_layout(src);
-
-    auto overlap = [](const SignalLayoutEntry& e1, const SignalLayoutEntry& e2) -> bool {
-        return std::any_of(e1.ranges.begin(), e1.ranges.end(), [&e2](const SignalRange& r1) {
-            // Find if r2 shares a SignalRange with the same byte with r1 
-            auto r2 = std::find_if(e2.ranges.begin(), e2.ranges.end(), [&r1](const SignalRange& e_range) {
-                return r1.byte == e_range.byte;
-            });
-
-            // The signals are on completely different bytes
-            if(r2 == e2.ranges.end())
-                return false;
-
-            // ordered.first is the leftmost SignalRange in the byte
-            // ordered.second is the rightmost SignalRange in the byte
-            auto ordered = std::minmax(r1, *r2, [](const SignalRange& r, const SignalRange& rr) {
-                return r.lr_start_bit < rr.lr_start_bit;
-            });
-
-            // No overlapping if the last bit of the leftmost is before the first
-            // bit of the rightmost.
-            return ordered.first.lr_end_bit < ordered.second.lr_start_bit;
-        });
-    };
 
     for(size_t i = 0; i < layout.size(); i++) {
         const SignalLayoutEntry& e = layout[i];
