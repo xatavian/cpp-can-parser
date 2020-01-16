@@ -275,8 +275,8 @@ std::string Tokenizer::parseNumber(bool& is_float) {
 void Tokenizer::skipUntil(const std::string& token) {
   unsigned long long initLine = lineCount();
 
-  while(currentToken.image != token &&
-        currentToken.type != Token::Eof) {
+  while(currentToken != token &&
+        currentToken != Token::Eof) {
     getNextToken();
   }
 
@@ -298,7 +298,7 @@ char FileTokenizer::doGetNextChar() {
   if (inputstream.eof())
     return 0;
 
-  char result;
+  char result = 0;
   inputstream.get(result);
 
   charCnt += 1;
