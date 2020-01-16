@@ -77,13 +77,7 @@ std::tuple<CanParseAction, std::string, uint32_t> extractAction(int argc, char**
       check_args = false;
       
       try {
-        if(arg.compare(0, 2, "0x") == 0 || arg.compare(0, 2, "0X") == 0) {
-          detail_frame = std::stoul(arg, nullptr, 16);
-        }
-        else {
-          detail_frame = std::stoul(arg);
-        }
-        
+        detail_frame = std::stoul(arg, nullptr, 0);        
         action = static_cast<CanParseAction>(static_cast<int>(action) + 1);
         continue;
       } catch(const std::logic_error& e) {
