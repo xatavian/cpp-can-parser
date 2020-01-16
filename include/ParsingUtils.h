@@ -4,12 +4,16 @@
 #include "Tokenizer.h"
 #include <string>
 #include <iostream>
+#include "CANDatabase.h"
 #include "CANDatabaseException.h"
 
-void throw_error(const std::string& category, const std::string& description,
-                unsigned long long line);
+void throw_error(
+  const std::string& category, const std::string& description,
+  unsigned long long line);
 
-void warning(const std::string& description, unsigned long long line) ;
+void warning(
+  std::vector<CANDatabase::parsing_warning>* warnings, 
+  const std::string& description, unsigned long long line);
 
 const Token&
 assert_token(Tokenizer& tokenizer, const std::string& token);

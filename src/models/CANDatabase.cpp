@@ -14,19 +14,19 @@ std::size_t CANDatabase::size() const {
   return map_.size();
 }
 
-CANDatabase CANDatabase::fromFile(const std::string& filename) {
+CANDatabase CANDatabase::fromFile(const std::string& filename, std::vector<parsing_warning>* warnings) {
   std::ifstream test_stream(filename);
   if (!test_stream.good()) {
     throw CANDatabaseException("Cannot find file " + filename);
   }
   
   FileTokenizer tokenizer(filename);
-  return DBCParser::fromTokenizer(filename, tokenizer);
+  return DBCParser::fromTokenizer(filename, tokenizer, warnings);
 }
 
-CANDatabase CANDatabase::fromString(const std::string & src_string) {
+CANDatabase CANDatabase::fromString(const std::string & src_string, std::vector<parsing_warning>* warnings) {
   StringTokenizer tokenizer(src_string);
-  return DBCParser::fromTokenizer(tokenizer);
+  return DBCParser::fromTokenizer(tokenizer, warnings);
 }
 
 const CANFrame& CANDatabase::at(const std::string& name) const {
@@ -50,16 +50,6 @@ CANFrame& CANDatabase::at(unsigned long long id) {
 }
 
 void CANDatabase::addFrame(const CANFrame& frame) {
-  if(strKeyIndex_.find(frame.name()) != strKeyIndex_.end()) {
-    std::cout << "WARNING: Double declaration of a frame with name "
-              << "\"" << frame.name() << "\"" << std::endl;
-  }
-  
-  if(intKeyIndex_.find(frame.can_id()) != intKeyIndex_.end()) {
-    std::cout << "WARNING: Double declaration of a frame with id "
-              << frame.can_id() << std::endl;
-  }
-
   IDKey map_key = { frame.name(), frame.can_id() };
 
   map_.insert(std::make_pair(map_key, frame));

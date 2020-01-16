@@ -26,18 +26,31 @@
 class CANDatabase {
 public:
   /**
+   * @brief A parsing warning and its location
+   */
+  struct parsing_warning {
+    int line;
+    std::string description;
+  };
+
+public:
+  /**
    * @brief Parse a CANDatabase from the given source file.
    * @param filename Path to the file to parse
+   * @param warnings (Optional) Filled with all the warnings found during the parsing
    * @throw CANDatabaseException if the parsing failed
    */
-  static CANDatabase fromFile(const std::string& filename);
+  static CANDatabase fromFile(
+    const std::string& filename, std::vector<parsing_warning>* warnings = nullptr);
 
   /**
    * @brief Construct a CANDatabase object from a database described by src_string
    * @param src_string Source string to parse
+   * @param warnings (Optional) Filled with all the warnings found during the parsing
    * @throw CANDatabaseException if the parsing failed
    */
-  static CANDatabase fromString(const std::string& src_string);
+  static CANDatabase fromString(
+    const std::string& src_string, std::vector<parsing_warning>* warnings = nullptr);
 
 public:
   struct IDKey {
