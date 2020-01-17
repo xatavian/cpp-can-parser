@@ -150,7 +150,12 @@ int main(int argc, char** argv) {
     break;
       
     case CheckAll:
-      check_all_frames(db, warnings);
+      {
+        if(!check_all_frames(db, warnings)) {
+          // CheckAll failed, we return an non-zero error-code.
+          return 3;
+        }
+      }
       break;
 
     case Help:

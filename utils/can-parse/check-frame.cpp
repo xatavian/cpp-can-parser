@@ -3,7 +3,7 @@
 #include "CANDatabase.h"
 #include <algorithm>
 
-void CppCAN::can_parse::check_all_frames(CANDatabase& db, const std::vector<CANDatabase::parsing_warning>& warnings) {
+bool CppCAN::can_parse::check_all_frames(CANDatabase& db, const std::vector<CANDatabase::parsing_warning>& warnings) {
   std::vector<uint32_t> ids;
 
   if(warnings.size() > 0) {
@@ -31,4 +31,9 @@ void CppCAN::can_parse::check_all_frames(CANDatabase& db, const std::vector<CAND
     }
     std::cout << ids.back() << std::endl;
   }
+
+  if(warnings.size() > 0 || ids.size() > 0)
+    return false;
+  
+  return true;
 }

@@ -22,7 +22,7 @@ namespace can_parse {
     /**
      * @brief Checks the validity of all the frames of the database
      */
-    void check_all_frames(CANDatabase& db, const std::vector<CANDatabase::parsing_warning>& warnings);
+    bool check_all_frames(CANDatabase& db, const std::vector<CANDatabase::parsing_warning>& warnings);
 
     /**
      * Exception thrown by any operation if an error happens during their
