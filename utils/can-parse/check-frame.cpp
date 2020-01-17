@@ -23,7 +23,7 @@ void CppCAN::can_parse::check_all_frames(CANDatabase& db, const std::vector<CAND
   if(ids.size() == 0)
     std::cout << "No layout issue have been found in the CAN database." << std::endl;
   else {
-    std::cout << "Some layout have been found in the database for the following frames: ";
+    std::cout << "Some layout issues have been found in the database for the following frames: ";
     std::cout << std::hex << std::showbase;
 
     for(size_t i = 0; i < ids.size() - 1; i++) {
