@@ -203,4 +203,4 @@ There you got yourself a very nice installation of `can-parse` :) !
 Supported standards
 ===================
 
-* DBC (in progress)
+* DBC (the relevant subset of the file format)
