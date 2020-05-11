@@ -2,9 +2,10 @@
 #include "CANDatabaseAnalysis.h"
 #include "CANDatabase.h"
 #include <algorithm>
+#include <iostream>
 
 static void
-print_frame_result(const CANFrame& frame, const std::vector<std::string>& diagnosis) {
+print_frame_result(const CppCAN::CANFrame& frame, const std::vector<std::string>& diagnosis) {
   std::string error_sig_names = "\"" + *diagnosis.begin() + "\"";
   std::for_each(diagnosis.begin() + 1, diagnosis.end(), [&error_sig_names](const std::string& sig_name) {
     error_sig_names += ", \"" + sig_name + "\"";

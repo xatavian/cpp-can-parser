@@ -3,6 +3,9 @@
 #include <utility>
 #include <iostream>
 
+using namespace CppCAN;
+namespace dtl = CppCAN::parser::details;
+
 class CANDatabase::CANDatabaseImpl {
 public:
   using container_type = CANDatabase::container_type;
@@ -78,13 +81,13 @@ CANDatabase CANDatabase::fromFile(const std::string& filename, std::vector<parsi
     throw CANDatabaseException("Cannot find file " + filename);
   }
   
-  FileTokenizer tokenizer(filename);
-  return DBCParser::fromTokenizer(filename, tokenizer, warnings);
+  dtl::FileTokenizer tokenizer(filename);
+  return CppCAN::parser::dbc::fromTokenizer(filename, tokenizer, warnings);
 }
 
 CANDatabase CANDatabase::fromString(const std::string & src_string, std::vector<parsing_warning>* warnings) {
-  StringTokenizer tokenizer(src_string);
-  return DBCParser::fromTokenizer(tokenizer, warnings);
+  dtl::StringTokenizer tokenizer(src_string);
+  return CppCAN::parser::dbc::fromTokenizer(tokenizer, warnings);
 }
 
 const CANFrame& CANDatabase::at(const std::string& name) const {
@@ -218,7 +221,7 @@ void CANDatabase::clear() {
   impl->strKeyIndex_.clear();
 }
 
-void swap(CANDatabase & first, CANDatabase & second) {
+void CppCAN::swap(CANDatabase & first, CANDatabase & second) {
   std::swap(first.impl, second.impl);
 }
 

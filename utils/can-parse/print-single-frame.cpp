@@ -6,6 +6,8 @@
 #include <numeric>
 #include <sstream>
 
+using namespace CppCAN;
+
 class ConsoleTable {
 public:
   struct TableData {

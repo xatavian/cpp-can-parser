@@ -2,6 +2,8 @@
 #include <sstream>
 #include <iomanip>
 
+namespace dtl = CppCAN::parser::details;
+
 std::string assert_token_str_err(
   const std::string& expected, const std::string& actual) {
  
@@ -12,9 +14,11 @@ std::string assert_token_str_err(
 }
 
 std::string assert_token_type_err(
-  Token::Type expected, const std::string& actual) {
+  dtl::Token::Type expected, const std::string& actual) {
   
   std::string targetTypeStr = "";
+
+  using Token = dtl::Token;
   switch(expected) {
   case Token::Number:
     targetTypeStr = "NUMBER";
@@ -51,26 +55,26 @@ std::string assert_token_type_err(
   return ss.str(); 
 }
 
-bool is_token(Tokenizer& tokenizer, const std::string& token) {
+bool dtl::is_token(dtl::Tokenizer& tokenizer, const std::string& token) {
   return tokenizer.getNextToken() == token;
 }
 
-bool is_token(Tokenizer& tokenizer, Token::Type token) {
+bool dtl::is_token(dtl::Tokenizer& tokenizer, dtl::Token::Type token) {
   return tokenizer.getNextToken() == token;
 }
 
-bool is_current_token(const Tokenizer& tokenizer, const std::string& token) {
+bool dtl::is_current_token(const dtl::Tokenizer& tokenizer, const std::string& token) {
   return tokenizer.getCurrentToken() == token;
 }
 
-bool is_current_token(const Tokenizer& tokenizer, Token::Type token) {
+bool dtl::is_current_token(const dtl::Tokenizer& tokenizer, Token::Type token) {
   return tokenizer.getCurrentToken() == token;
 }
 
-const Token&
-assert_token(Tokenizer& tokenizer, const std::string& token) {
-  if(!is_token(tokenizer, token)) {
-    throw_error(
+const dtl::Token&
+dtl::assert_token(dtl::Tokenizer& tokenizer, const std::string& token) {
+  if(!dtl::is_token(tokenizer, token)) {
+    dtl::throw_error(
         "Syntax error",
         assert_token_str_err(token, tokenizer.getCurrentToken().image),
         tokenizer.lineCount());
@@ -79,10 +83,10 @@ assert_token(Tokenizer& tokenizer, const std::string& token) {
   return tokenizer.getCurrentToken();
 }
 
-const Token&
-assert_token(Tokenizer& tokenizer, Token::Type type) {
-  if(!is_token(tokenizer, type)) {
-    throw_error(
+const dtl::Token&
+dtl::assert_token(dtl::Tokenizer& tokenizer, dtl::Token::Type type) {
+  if(!dtl::is_token(tokenizer, type)) {
+    dtl::throw_error(
         "Syntax error",
         assert_token_type_err(type, tokenizer.getCurrentToken().image),
         tokenizer.lineCount());
@@ -91,10 +95,10 @@ assert_token(Tokenizer& tokenizer, Token::Type type) {
   return tokenizer.getCurrentToken();
 }
 
-const Token&
-assert_current_token(const Tokenizer& tokenizer, const std::string& token) {
-  if(!is_current_token(tokenizer, token)) {
-    throw_error(
+const dtl::Token&
+dtl::assert_current_token(const dtl::Tokenizer& tokenizer, const std::string& token) {
+  if(!dtl::is_current_token(tokenizer, token)) {
+    dtl::throw_error(
         "Syntax error",
         assert_token_str_err(token, tokenizer.getCurrentToken().image),
         tokenizer.lineCount());
@@ -103,10 +107,10 @@ assert_current_token(const Tokenizer& tokenizer, const std::string& token) {
   return tokenizer.getCurrentToken();
 }
 
-const Token&
-assert_current_token(const Tokenizer& tokenizer, Token::Type type) {
-  if(!is_current_token(tokenizer, type)) {
-    throw_error(
+const dtl::Token&
+dtl::assert_current_token(const Tokenizer& tokenizer, dtl::Token::Type type) {
+  if(!dtl::is_current_token(tokenizer, type)) {
+    dtl::throw_error(
         "Syntax error",
         assert_token_type_err(type, tokenizer.getCurrentToken().image),
         tokenizer.lineCount());
@@ -115,8 +119,8 @@ assert_current_token(const Tokenizer& tokenizer, Token::Type type) {
   return tokenizer.getCurrentToken();
 }
 
-bool peek_token(Tokenizer& tokenizer, Token::Type type) {
-  const Token& toCheck = tokenizer.getNextToken();
+bool dtl::peek_token(dtl::Tokenizer& tokenizer, dtl::Token::Type type) {
+  const dtl::Token& toCheck = tokenizer.getNextToken();
   if(toCheck == type) {
     return true;
   }
@@ -125,8 +129,8 @@ bool peek_token(Tokenizer& tokenizer, Token::Type type) {
   return false;
 }
 
-bool peek_token(Tokenizer& tokenizer, const std::string& type) {
-  const Token& toCheck = tokenizer.getNextToken();
+bool dtl::peek_token(dtl::Tokenizer& tokenizer, const std::string& type) {
+  const dtl::Token& toCheck = tokenizer.getNextToken();
   if(toCheck == type) {
     return true;
   }
@@ -135,14 +139,15 @@ bool peek_token(Tokenizer& tokenizer, const std::string& type) {
   return false;
 }
 
-void throw_error(const std::string& category, const std::string& description,
-                unsigned long long line) {
-  throw CANDatabaseException(
+void dtl::throw_error(const std::string& category, const std::string& description,
+                      unsigned long long line) {
+  throw CppCAN::CANDatabaseException(
     category + ": " + description + " at line " + std::to_string(line + 1)
   );
 }
 
-void warning(std::vector<CANDatabase::parsing_warning>* warnings, const std::string& description, unsigned long long line) {
+void dtl::warning(std::vector<CppCAN::CANDatabase::parsing_warning>* warnings, 
+                  const std::string& description, unsigned long long line) {
   if(warnings == nullptr)
     return;
 

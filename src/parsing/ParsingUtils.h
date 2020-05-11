@@ -1,11 +1,15 @@
 #ifndef ParsingUtils_H
 #define ParsingUtils_H
 
-#include "Tokenizer.h"
 #include <string>
 #include <iostream>
+
+#include "Tokenizer.h"
 #include "CANDatabase.h"
-#include "CANDatabaseException.h"
+
+namespace CppCAN {
+namespace parser {
+namespace details {
 
 void throw_error(
   const std::string& category, const std::string& description,
@@ -38,5 +42,9 @@ bool is_token(Tokenizer& tokenizer, Token::Type token);
 bool peek_token(Tokenizer& tokenizer, Token::Type type);
 
 bool peek_token(Tokenizer& tokenizer, const std::string& token);
+
+}
+}
+}
 
 #endif

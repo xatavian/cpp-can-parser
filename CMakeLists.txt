@@ -10,6 +10,10 @@ set(CPPPARSER_INCLUDE_DIRECTORY
 	${CMAKE_CURRENT_LIST_DIR}/include
 )
 
+set(CPPPARSER_INCLUDE_DIRECTORY_PRIVATE 
+	${CMAKE_CURRENT_LIST_DIR}/src/parsing
+)
+
 set(CPPPARSER_SRC_FILES
 	src/models/CANDatabase.cpp
 	src/models/CANFrame.cpp
@@ -30,7 +34,8 @@ add_library(cpp-can-parser
 	${CPPPARSER_SRC_FILES})
 target_include_directories(cpp-can-parser 
 	PUBLIC ${CPPPARSER_INCLUDE_DIRECTORY}
-		   ${CMAKE_CURRENT_BINARY_DIR}/exports/)
+		   ${CMAKE_CURRENT_BINARY_DIR}/exports/
+	PRIVATE ${CPPPARSER_INCLUDE_DIRECTORY_PRIVATE})
 generate_export_header(cpp-can-parser
 	BASE_NAME cpp_can_parser
 	EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/exports/cpp_can_parser_export.h)

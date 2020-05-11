@@ -1,4 +1,6 @@
-#include "CANSignal.h"
+#include "CANDatabase.h"
+
+using namespace CppCAN;
 
 CANSignal::Range CANSignal::Range::fromString(const std::string & minstr, const std::string & maxstr) {
   long min = std::stol(minstr);

@@ -1,7 +1,9 @@
 #include "Tokenizer.h"
-#include "CANDatabaseException.h"
+#include "CANDatabase.h"
 #include <cctype>
 #include <iostream>
+
+using namespace CppCAN::parser::details;
 
 bool isSpace(char c) {
   return  std::isspace((unsigned char)c);
@@ -214,7 +216,7 @@ const Token& Tokenizer::getNextToken() {
   else {
     std::string exceptStr = "Invalid character \"" + std::string(1, currentChar) + "\" "
                             "(ascii " + std::to_string(currentChar) + ") encountered at line " + std::to_string(lineCount());
-    throw CANDatabaseException(exceptStr);
+    throw CppCAN::CANDatabaseException(exceptStr);
   }
 
   // std::cout << "Token: " << currentToken.image() << std::endl;

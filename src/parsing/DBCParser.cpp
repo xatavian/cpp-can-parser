@@ -1,5 +1,3 @@
-#include "DBCParser.h"
-#include "CANDatabaseException.h"
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -7,8 +5,10 @@
 #include <iterator>
 #include <iomanip>
 #include "ParsingUtils.h"
+#include "DBCParser.h"
 
-using namespace DBCParser;
+using namespace CppCAN::parser::dbc;
+namespace dtl = CppCAN::parser::details;
 
 static std::string VERSION_TOKEN = "VERSION";
 static std::string NS_SECTION_TOKEN1 = "NS_";
@@ -45,19 +45,23 @@ static std::set<std::string> UNSUPPORTED_DBC_TOKENS = {
   "SGTYPE_", "SIG_GROUP_"
 }; 
 
-bool is_dbc_token(const Token& token) {
+static bool 
+is_dbc_token(const dtl::Token& token) {
   return SUPPORTED_DBC_TOKENS.count(token.image) > 0 ||
          NS_TOKENS.count(token.image) > 0||
          UNSUPPORTED_DBC_TOKENS.count(token.image) > 0;
 }
 
-CANDatabase DBCParser::fromTokenizer(Tokenizer& tokenizer, std::vector<CANDatabase::parsing_warning>* warnings) {
+CppCAN::CANDatabase 
+CppCAN::parser::dbc::fromTokenizer(dtl::Tokenizer& tokenizer, 
+                                   std::vector<CANDatabase::parsing_warning>* warnings) {
   return fromTokenizer("", tokenizer, warnings);
 }
 
-std::string parseVersionSection(Tokenizer& tokenizer) {
-  if(peek_token(tokenizer, VERSION_TOKEN)) {
-    Token candb_version = assert_token(tokenizer, Token::StringLiteral);
+static std::string
+parseVersionSection(dtl::Tokenizer& tokenizer) {
+  if(dtl::peek_token(tokenizer, VERSION_TOKEN)) {
+    dtl::Token candb_version = assert_token(tokenizer, dtl::Token::StringLiteral);
     // std::cout << "CANdb++ version: " << candb_version.image << std::endl;
     return candb_version.image;
   }
@@ -66,14 +70,14 @@ std::string parseVersionSection(Tokenizer& tokenizer) {
 }
 
 static void
-parseNSSection(Tokenizer& tokenizer) {
-  if(!peek_token(tokenizer, NS_SECTION_TOKEN1) && 
-     !peek_token(tokenizer, NS_SECTION_TOKEN2)) // Sometimes, one can find both NS_ ans _NS in DBC files
+parseNSSection(dtl::Tokenizer& tokenizer) {
+  if(!dtl::peek_token(tokenizer, NS_SECTION_TOKEN1) && 
+     !dtl::peek_token(tokenizer, NS_SECTION_TOKEN2)) // Sometimes, one can find both NS_ ans _NS in DBC files
     return;
 
-  assert_token(tokenizer, ":");
+  dtl::assert_token(tokenizer, ":");
   
-  Token token = tokenizer.getNextToken();
+  dtl::Token token = tokenizer.getNextToken();
   while (NS_TOKENS.count(token.image) > 0) {
     token = tokenizer.getNextToken();
   }
@@ -82,56 +86,58 @@ parseNSSection(Tokenizer& tokenizer) {
 }
 
 static void
-parseBitTimingSection(Tokenizer& tokenizer) {
+parseBitTimingSection(dtl::Tokenizer& tokenizer) {
   assert_token(tokenizer, BIT_TIMING_TOKEN);
   assert_token(tokenizer, ":");
 
-  if (peek_token(tokenizer, Token::PositiveNumber)) {
-    Token baudrate = assert_current_token(tokenizer, Token::PositiveNumber);
-    assert_token(tokenizer, ":");
-    Token btr1 = assert_token(tokenizer, Token::PositiveNumber);
-    assert_token(tokenizer, ",");
-    Token btr2 = assert_token(tokenizer, Token::PositiveNumber);
+  if (peek_token(tokenizer, dtl::Token::PositiveNumber)) {
+    dtl::Token baudrate = dtl::assert_current_token(tokenizer, dtl::Token::PositiveNumber);
+    dtl::assert_token(tokenizer, ":");
+    dtl::Token btr1 = assert_token(tokenizer, dtl::Token::PositiveNumber);
+    dtl::assert_token(tokenizer, ",");
+    dtl::Token btr2 = assert_token(tokenizer, dtl::Token::PositiveNumber);
   }
 }
 
 static void
-parseNodesSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
-  assert_token(tokenizer, NODE_DEF_TOKEN);
-  assert_token(tokenizer, ":");
+parseNodesSection(dtl::Tokenizer& tokenizer, CppCAN::CANDatabase& db, 
+                  std::vector<CppCAN::CANDatabase::parsing_warning>* warnings) {
+  dtl::assert_token(tokenizer, NODE_DEF_TOKEN);
+  dtl::assert_token(tokenizer, ":");
 
   std::set<std::string> nodes;
 
-  if(!peek_token(tokenizer, Token::Identifier)) {
+  if(!dtl::peek_token(tokenizer, dtl::Token::Identifier)) {
     return;
   }
 
-  Token currentToken = assert_token(tokenizer, Token::Identifier);
+  dtl::Token currentToken = dtl::assert_token(tokenizer, dtl::Token::Identifier);
 
   // Looking for all the identifiers on the same line
-  while(currentToken != Token::Eof &&
+  while(currentToken != dtl::Token::Eof &&
         !is_dbc_token(currentToken)) {
     
     if(nodes.count(currentToken.image) > 0) {
-      warning(warnings, currentToken.image + " is an already registered node name", 
+      dtl::warning(warnings, currentToken.image + " is an already registered node name", 
               tokenizer.lineCount());
     }
     else {
       nodes.insert(currentToken.image);
     }
     
-    currentToken = assert_token(tokenizer, Token::Identifier);
+    currentToken = dtl::assert_token(tokenizer, dtl::Token::Identifier);
   }
 
   tokenizer.saveTokenIfNotEof(currentToken);
 }
 
 static void
-parseUnsupportedCommandSection(Tokenizer& tokenizer, const std::string& command, std::vector<CANDatabase::parsing_warning>* warnings) {
-  while(peek_token(tokenizer, command)) {
+parseUnsupportedCommandSection(dtl::Tokenizer& tokenizer, const std::string& command, 
+                               std::vector<CppCAN::CANDatabase::parsing_warning>* warnings) {
+  while(dtl::peek_token(tokenizer, command)) {
     // In DBC files, some instructions don't finish by a semi-colon.
     // Fotunately, all the unsupported ones do finish by a semi-colon.
-    warning(
+    dtl::warning(
       warnings, 
       "Skipped \"" + command + "\" instruction "
       "because it is not supported", 
@@ -141,81 +147,83 @@ parseUnsupportedCommandSection(Tokenizer& tokenizer, const std::string& command,
 }
 
 static void
-parseSigDefInstruction(Tokenizer& tokenizer, CANFrame& frame, std::vector<CANDatabase::parsing_warning>* warnings ) {
-  assert_current_token(tokenizer, SIG_DEF_TOKEN);
+parseSigDefInstruction(dtl::Tokenizer& tokenizer, CppCAN::CANFrame& frame, 
+                       std::vector<CppCAN::CANDatabase::parsing_warning>* warnings ) {
+  dtl::assert_current_token(tokenizer, SIG_DEF_TOKEN);
 
-  Token name = assert_token(tokenizer, Token::Identifier);
-  assert_token(tokenizer, ":");
-  Token startBit = assert_token(tokenizer, Token::PositiveNumber);
-  assert_token(tokenizer, "|");
-  Token length = assert_token(tokenizer, Token::PositiveNumber);
-  assert_token(tokenizer, "@");
-  Token endianess = assert_token(tokenizer, Token::PositiveNumber);
-  Token signedness = assert_token(tokenizer, Token::ArithmeticSign);
-  assert_token(tokenizer, "(");
-  Token scale = assert_token(tokenizer, Token::Number);
-  assert_token(tokenizer, ",");
-  Token offset = assert_token(tokenizer, Token::Number);
-  assert_token(tokenizer, ")");
-  assert_token(tokenizer, "[");
-  Token min = assert_token(tokenizer, Token::Number);
-  assert_token(tokenizer, "|");
-  Token max = assert_token(tokenizer, Token::Number);
-  assert_token(tokenizer, "]");
-  Token unit = assert_token(tokenizer, Token::StringLiteral);
+  dtl::Token name = dtl::assert_token(tokenizer, dtl::Token::Identifier);
+  dtl::assert_token(tokenizer, ":");
+  dtl::Token startBit = dtl::assert_token(tokenizer, dtl::Token::PositiveNumber);
+  dtl::assert_token(tokenizer, "|");
+  dtl::Token length = assert_token(tokenizer, dtl::Token::PositiveNumber);
+  dtl::assert_token(tokenizer, "@");
+  dtl::Token endianess = dtl::assert_token(tokenizer, dtl::Token::PositiveNumber);
+  dtl::Token signedness = dtl::assert_token(tokenizer, dtl::Token::ArithmeticSign);
+  dtl::assert_token(tokenizer, "(");
+  dtl::Token scale = dtl::assert_token(tokenizer, dtl::Token::Number);
+  dtl::assert_token(tokenizer, ",");
+  dtl::Token offset = assert_token(tokenizer, dtl::Token::Number);
+  dtl::assert_token(tokenizer, ")");
+  dtl::assert_token(tokenizer, "[");
+  dtl::Token min = dtl::assert_token(tokenizer, dtl::Token::Number);
+  dtl::assert_token(tokenizer, "|");
+  dtl::Token max = dtl::assert_token(tokenizer, dtl::Token::Number);
+  dtl::assert_token(tokenizer, "]");
+  dtl::Token unit = dtl::assert_token(tokenizer, dtl::Token::StringLiteral);
    
   // ECU are ignored for now
-  Token targetECU = assert_token(tokenizer, Token::Identifier);  
-  while (peek_token(tokenizer, ",")) {
-    targetECU = assert_token(tokenizer, Token::Identifier);
+  dtl::Token targetECU = dtl::assert_token(tokenizer, dtl::Token::Identifier);  
+  while (dtl::peek_token(tokenizer, ",")) {
+    targetECU = dtl::assert_token(tokenizer, dtl::Token::Identifier);
   }
 
   if(frame.contains(name.image)) {
     std::stringstream ss;
     ss << "Double declaration of the signal " << std::quoted(name.image)
        << " in frame " << frame.can_id();  
-    warning(warnings, ss.str(), tokenizer.lineCount());
+    dtl::warning(warnings, ss.str(), tokenizer.lineCount());
   }
 
   frame.addSignal(
-    CANSignal(
+    CppCAN::CANSignal(
       name.image,
       startBit.toUInt(),
       length.toUInt(),
       scale.toDouble(),
       offset.toDouble(),
-      signedness == "-" ? CANSignal::Signed : CANSignal::Unsigned,
-      endianess == "0" ? CANSignal::BigEndian : CANSignal::LittleEndian,
-      CANSignal::Range::fromString(min.image, max.image)
+      signedness == "-" ? CppCAN::CANSignal::Signed : CppCAN::CANSignal::Unsigned,
+      endianess == "0" ? CppCAN::CANSignal::BigEndian : CppCAN::CANSignal::LittleEndian,
+      CppCAN::CANSignal::Range::fromString(min.image, max.image)
     )
   );
 }
 
 static void
-parseMsgDefSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
-  while(peek_token(tokenizer, MESSAGE_DEF_TOKEN)) {
-    Token id = assert_token(tokenizer, Token::PositiveNumber);
-    Token name = assert_token(tokenizer, Token::Identifier);
+parseMsgDefSection(dtl::Tokenizer& tokenizer, CppCAN::CANDatabase& db, 
+                   std::vector<CppCAN::CANDatabase::parsing_warning>* warnings) {
+  while(dtl::peek_token(tokenizer, MESSAGE_DEF_TOKEN)) {
+    dtl::Token id = dtl::assert_token(tokenizer, dtl::Token::PositiveNumber);
+    dtl::Token name = dtl::assert_token(tokenizer, dtl::Token::Identifier);
 
-    assert_token(tokenizer, ":");
+    dtl::assert_token(tokenizer, ":");
 
-    Token dlc = assert_token(tokenizer, Token::PositiveNumber);
-    Token ecu = assert_token(tokenizer, Token::Identifier);
+    dtl::Token dlc = assert_token(tokenizer, dtl::Token::PositiveNumber);
+    dtl::Token ecu = assert_token(tokenizer, dtl::Token::Identifier);
 
     if(db.contains(id.toUInt())) {
-      throw_error("Database error", "Double declaration of frame with CAN ID " + id.image, tokenizer.lineCount());
+      dtl::throw_error("Database error", "Double declaration of frame with CAN ID " + id.image, tokenizer.lineCount());
     }
 
     if(db.contains(name.image)) {
       std::stringstream ss;
       ss << "Double declaration of the frame with name " << std::quoted(name.image);
-      warning(warnings, ss.str(), tokenizer.lineCount());
+      dtl::warning(warnings, ss.str(), tokenizer.lineCount());
     }
 
-    CANFrame new_frame(
+    CppCAN::CANFrame new_frame(
       name.image, id.toUInt(), dlc.toUInt());
 
-    while(peek_token(tokenizer, SIG_DEF_TOKEN)) {
+    while(dtl::peek_token(tokenizer, SIG_DEF_TOKEN)) {
       parseSigDefInstruction(tokenizer, new_frame, warnings);
     }
 
@@ -224,17 +232,18 @@ parseMsgDefSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabas
 }
 
 static void
-parseMsgCommentInstruction(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
-  Token targetFrame = assert_token(tokenizer, Token::PositiveNumber);
-  Token comment = assert_token(tokenizer, Token::StringLiteral);
-  assert_token(tokenizer, ";");
+parseMsgCommentInstruction(dtl::Tokenizer& tokenizer, CppCAN::CANDatabase& db, 
+                           std::vector<CppCAN::CANDatabase::parsing_warning>* warnings) {
+  dtl::Token targetFrame = dtl::assert_token(tokenizer, dtl::Token::PositiveNumber);
+  dtl::Token comment = dtl::assert_token(tokenizer, dtl::Token::StringLiteral);
+  dtl::assert_token(tokenizer, ";");
 
   auto frame_id = targetFrame.toUInt();
   if(db.contains(frame_id)) {
     db.at(frame_id).setComment(comment.image);
   }
   else {
-    warning(
+    dtl::warning(
       warnings, 
       "Invalid comment instruction: Frame with "
       "id " + targetFrame.image + " does not exist", 
@@ -243,20 +252,21 @@ parseMsgCommentInstruction(Tokenizer& tokenizer, CANDatabase& db, std::vector<CA
 }
 
 static void
-parseSigCommentInstruction(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
-  Token targetFrame = assert_token(tokenizer, Token::PositiveNumber);
-  Token targetSignal = assert_token(tokenizer, Token::Identifier);
-  Token comment = assert_token(tokenizer, Token::StringLiteral);
-  assert_token(tokenizer, ";");
+parseSigCommentInstruction(dtl::Tokenizer& tokenizer, CppCAN::CANDatabase& db, 
+                           std::vector<CppCAN::CANDatabase::parsing_warning>* warnings) {
+  dtl::Token targetFrame = dtl::assert_token(tokenizer, dtl::Token::PositiveNumber);
+  dtl::Token targetSignal = dtl::assert_token(tokenizer, dtl::Token::Identifier);
+  dtl::Token comment = dtl::assert_token(tokenizer, dtl::Token::StringLiteral);
+  dtl::assert_token(tokenizer, ";");
 
   if(!db.contains(targetFrame.toUInt())) {
-    warning(warnings, "Invalid comment instruction: Frame with id " + targetFrame.image + " does not exist", tokenizer.lineCount());
+    dtl::warning(warnings, "Invalid comment instruction: Frame with id " + targetFrame.image + " does not exist", tokenizer.lineCount());
     return;
   }
 
-  CANFrame& frame = db[targetFrame.toUInt()];
+  CppCAN::CANFrame& frame = db[targetFrame.toUInt()];
   if(!frame.contains(targetSignal.image)) {
-    warning(
+    dtl::warning(
       warnings, 
       "Invalid comment instruction: Frame with "
       "id " + targetFrame.image + " does not have a signal "
@@ -271,16 +281,17 @@ parseSigCommentInstruction(Tokenizer& tokenizer, CANDatabase& db, std::vector<CA
 }
 
 static void
-parseCommentSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
-  while(peek_token(tokenizer, COMMENT_TOKEN)) {
-    if(peek_token(tokenizer, Token::StringLiteral)) {
+parseCommentSection(dtl::Tokenizer& tokenizer, CppCAN::CANDatabase& db, 
+                    std::vector<CppCAN::CANDatabase::parsing_warning>* warnings) {
+  while(dtl::peek_token(tokenizer, COMMENT_TOKEN)) {
+    if(dtl::peek_token(tokenizer, dtl::Token::StringLiteral)) {
       // TODO: handle global comment
-      assert_token(tokenizer, ";");
-      warning(warnings, "Unsupported comment instruction", tokenizer.lineCount());
+      dtl::assert_token(tokenizer, ";");
+      dtl::warning(warnings, "Unsupported comment instruction", tokenizer.lineCount());
       continue;
     }
 
-    Token commentType = assert_token(tokenizer, Token::Identifier);
+    dtl::Token commentType = dtl::assert_token(tokenizer, dtl::Token::Identifier);
     if(commentType == MESSAGE_DEF_TOKEN) {
       parseMsgCommentInstruction(tokenizer, db, warnings);
     }
@@ -288,54 +299,56 @@ parseCommentSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDataba
       parseSigCommentInstruction(tokenizer, db, warnings);
     }
     else {
-      warning(warnings, "Unsupported comment instruction", tokenizer.lineCount());
+      dtl::warning(warnings, "Unsupported comment instruction", tokenizer.lineCount());
       tokenizer.skipUntil(";");
     }
   }
 }
 
 static void
-parseAttrValSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
-  while(peek_token(tokenizer, ATTR_VAL_TOKEN)) {
-    Token attrType = assert_token(tokenizer, Token::StringLiteral);
+parseAttrValSection(dtl::Tokenizer& tokenizer, CppCAN::CANDatabase& db, 
+                    std::vector<CppCAN::CANDatabase::parsing_warning>* warnings) {
+  while(dtl::peek_token(tokenizer, ATTR_VAL_TOKEN)) {
+    dtl::Token attrType = dtl::assert_token(tokenizer, dtl::Token::StringLiteral);
 
     if(attrType != "GenMsgCycleTime" && attrType != "CycleTime") {
       tokenizer.skipUntil(";");
-      warning(warnings, "Unsupported BA_ operation", tokenizer.lineCount());
+      dtl::warning(warnings, "Unsupported BA_ operation", tokenizer.lineCount());
       continue;
     }
  
-    assert_token(tokenizer, "BO_");
-    Token frameId = assert_token(tokenizer, Token::PositiveNumber);
-    Token period = assert_token(tokenizer, Token::PositiveNumber);
-    assert_token(tokenizer, ";");
+    dtl::assert_token(tokenizer, "BO_");
+    dtl::Token frameId = dtl::assert_token(tokenizer, dtl::Token::PositiveNumber);
+    dtl::Token period = dtl::assert_token(tokenizer, dtl::Token::PositiveNumber);
+    dtl::assert_token(tokenizer, ";");
 
     try {
       db[frameId.toUInt()].setPeriod(period.toUInt());
     }
     catch (const std::out_of_range& e) {
-     warning(warnings, frameId.image + " does not exist", tokenizer.lineCount());
+     dtl::warning(warnings, frameId.image + " does not exist", tokenizer.lineCount());
     }
   }
 }
 
 static void
-parseValDescSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
-  while(peek_token(tokenizer, SIG_VAL_DEF_TOKEN)) {
-    Token targetFrame = assert_token(tokenizer, Token::PositiveNumber);
-    Token targetSignal = assert_token(tokenizer, Token::Identifier);
+parseValDescSection(dtl::Tokenizer& tokenizer, CppCAN::CANDatabase& db, 
+                    std::vector<CppCAN::CANDatabase::parsing_warning>* warnings) {
+  while(dtl::peek_token(tokenizer, SIG_VAL_DEF_TOKEN)) {
+    dtl::Token targetFrame = dtl::assert_token(tokenizer, dtl::Token::PositiveNumber);
+    dtl::Token targetSignal = dtl::assert_token(tokenizer, dtl::Token::Identifier);
     
     std::map<unsigned int, std::string> targetChoices;
 
-    while(!peek_token(tokenizer, ";")) {
-      Token value = assert_token(tokenizer, Token::Number);
-      Token desc = assert_token(tokenizer, Token::StringLiteral);
+    while(!dtl::peek_token(tokenizer, ";")) {
+      dtl::Token value = dtl::assert_token(tokenizer, dtl::Token::Number);
+      dtl::Token desc = dtl::assert_token(tokenizer, dtl::Token::StringLiteral);
 
       targetChoices.insert(std::make_pair(value.toUInt(), desc.image));
     }
 
     if(!db.contains(targetFrame.toUInt())) {
-      warning(
+      dtl::warning(
         warnings, 
         "Invalid VAL_ instruction: Frame with id " + 
         targetFrame.image + " does not exist", 
@@ -343,9 +356,9 @@ parseValDescSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDataba
       continue;
     }
 
-    CANFrame& frame = db[targetFrame.toUInt()];
+    CppCAN::CANFrame& frame = db[targetFrame.toUInt()];
     if(!frame.contains(targetSignal.image)) {
-      warning(
+      dtl::warning(
         warnings, 
         "Invalid VAL_ instruction: Frame " + targetFrame.image + 
         " does not have a signal named \"" + targetSignal.image + "\"", 
@@ -358,7 +371,8 @@ parseValDescSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDataba
 }
 
 
-CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokenizer, std::vector<CANDatabase::parsing_warning>* warnings) {
+CppCAN::CANDatabase
+CppCAN::parser::dbc::fromTokenizer(const std::string& name, dtl::Tokenizer& tokenizer, std::vector<CppCAN::CANDatabase::parsing_warning>* warnings) {
   CANDatabase result(name);
 
   parseVersionSection(tokenizer);
@@ -377,18 +391,18 @@ CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokeniz
   parseAttrValSection(tokenizer, result, warnings);
   parseValDescSection(tokenizer, result, warnings);
 
-  while(!is_token(tokenizer, Token::Eof)) {
+  while(!dtl::is_token(tokenizer, dtl::Token::Eof)) {
     // We have a syntax error because we have a token which does not
     // represent any command.
     if(!is_dbc_token(tokenizer.getCurrentToken())) {
-      throw_error("Syntax error", 
-                  "Unexpected token \"" + tokenizer.getCurrentToken().image + "\"", 
-                  tokenizer.lineCount());
+      dtl::throw_error("Syntax error", 
+                       "Unexpected token \"" + tokenizer.getCurrentToken().image + "\"", 
+                       tokenizer.lineCount());
     }
 
     // We have a valid DBC instruction, but we ignore it because
     // it is not in a valid position.
-    warning(
+    dtl::warning(
       warnings,
       "Unexpected token " + tokenizer.getCurrentToken().image + 
       " at line " + std::to_string(tokenizer.lineCount())     +

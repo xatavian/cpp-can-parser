@@ -1,9 +1,11 @@
 #include "CANDatabaseAnalysis.h"
-#include "CANDatabaseException.h"
+#include "CANDatabase.h"
 #include <algorithm>
 #include <cmath>
 #include <tuple>
 #include <set>
+
+using namespace CppCAN;
 
 /**
  * For each entry: byte, [lr_start_bit, lr_end_bit)

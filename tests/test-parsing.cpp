@@ -2,6 +2,8 @@
 #include "CANDatabase.h"
 
 int main(int argc, char** argv) {
+    using namespace CppCAN;
+    
     std::vector<std::string> successParseFile = {
         "dbc-files/empty.dbc", "dbc-files/single-frame-1.dbc"
     };

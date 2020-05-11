@@ -1,6 +1,8 @@
-#include "CANFrame.h"
+#include "CANDatabase.h"
 #include <utility>
 #include <iostream>
+
+using namespace CppCAN;
 
 CANFrame::CANFrame(const std::string& name, unsigned long long can_id, 
                    unsigned int dlc, unsigned int period, 
@@ -138,7 +140,7 @@ void CANFrame::clear() {
   map_.clear();
 }
 
-void swap(CANFrame & first, CANFrame & second) {
+void CppCAN::swap(CANFrame & first, CANFrame & second) {
   std::swap(first.name_, second.name_);
   std::swap(first.can_id_, second.can_id_);
   std::swap(first.dlc_, second.dlc_);

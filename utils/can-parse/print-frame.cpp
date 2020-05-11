@@ -3,6 +3,9 @@
 #include "CANDatabase.h"
 #include <algorithm>
 #include <iomanip>
+#include <iostream>
+
+using namespace CppCAN;
 
 /*
  * Internal pretty-printing parameters

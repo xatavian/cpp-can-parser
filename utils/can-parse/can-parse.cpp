@@ -120,13 +120,13 @@ int main(int argc, char** argv) {
     return 0;
   }
   
-  CANDatabase db;
-  std::vector<CANDatabase::parsing_warning> warnings;
+  CppCAN::CANDatabase db;
+  std::vector<CppCAN::CANDatabase::parsing_warning> warnings;
 
   try {
-     db = std::move(CANDatabase::fromFile(src_file, &warnings));
+     db = std::move(CppCAN::CANDatabase::fromFile(src_file, &warnings));
   }
-  catch (const CANDatabaseException& e) {
+  catch (const CppCAN::CANDatabaseException& e) {
     std::cout << "An error happened while parsing the database: " 
               << e.what() << std::endl;
     return 2;
