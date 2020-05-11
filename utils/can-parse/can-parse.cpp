@@ -1,5 +1,4 @@
-#include "CANDatabase.h"
-#include "CANDatabaseAnalysis.h"
+#include "cpp-can-parser/CANDatabase.h"
 #include <iostream>
 #include <cstring>
 #include <algorithm>

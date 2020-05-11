@@ -1,6 +1,6 @@
 #include "operations.h"
-#include "CANDatabaseAnalysis.h"
-#include "CANDatabase.h"
+#include "cpp-can-parser/CANDatabaseAnalysis.h"
+#include "cpp-can-parser/CANDatabase.h"
 #include <algorithm>
 #include <iostream>
 

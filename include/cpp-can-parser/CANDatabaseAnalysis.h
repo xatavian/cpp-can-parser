@@ -1,8 +1,8 @@
 #ifndef CANDATABASE_ANALYSIS_H
 #define CANDATABASE_ANALYSIS_H
 
-#include "CANDatabase.h"
 #include <vector>
+#include "CANDatabase.h"
 #include "cpp_can_parser_export.h"
 
 namespace CppCAN {

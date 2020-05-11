@@ -5,7 +5,7 @@
 #include <string>
 #include <stdexcept>
 #include <vector>
-#include "CANDatabase.h"
+#include "cpp-can-parser/CANDatabase.h"
 
 namespace CppCAN {
 namespace can_parse {

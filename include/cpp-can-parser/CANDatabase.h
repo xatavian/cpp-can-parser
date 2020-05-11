@@ -114,7 +114,7 @@ private:
  * to empty the signals' list.
  * 
  * One can access the CANSignal with at() or operator[]. **Be careful as both will throw
- * a CANDatabaseException if the given key does noy match any signal in the frame.** To check
+ * a std::out_of_range if the given key does noy match any signal in the frame.** To check
  * if a signal is present, use contains(). Signals can be found both by their start bit 
  * or their name.
  * 

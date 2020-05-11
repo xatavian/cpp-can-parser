@@ -4,6 +4,21 @@ This project provides a C++ library that reads and parses [CAN](https://en.wikip
 
 Currently the library only understand a subset of the DBC file format. 
 
+**How robust and efficient is this library ?**
+
+C++ CAN Parser is an open-source project based on my work. The library is currently used in a robust 
+industrial-grade pipeline. The few test files that I gathered in the tests/dbc-files/ directory are
+inspired by in-use CAN databases of several automotive industrial companies. So you can safely include
+this library into your own pipeline or CAN-based software.
+
+C++ CAN Parser can be useful for building:
+* CAN sniffers
+* Static file generation (such as the [Auto-Generated Code on the SJ-One Board](http://socialledge.com/sjsu/index.php/DBC_Format#Auto-Generated_Code))
+* TCP-to-CAN and CAN-to-TCP middlewares
+* ...
+
+`can-parse` is a tool that analyzes a CAN database and proposes different operations. You can use it to inspect all or part of the database. `can-parse printframe CAN_ID` notably give detailed and structured information about the layout of a frame. Check out [the dedicated section](#can-parse) for more info.
+
 Table of Contents
 =================
 
@@ -17,22 +32,12 @@ Table of Contents
   - [`CANSignal`](#cansignal)
   - [`CANFrame`](#canframe)
   - [`CANDatabase`](#candatabase)
+- [Database analysis](#database-analysis)
 - [can-parse](#can-parse)
 - [Supported standards](#supported-standards)
   
 Compile and include the library
 ===============================
-
-## The public headers
-
-You need to put the public headers in an appropriate place:
-
-```
-your_project/
-  |_ src/ 
-  |_ include/
-    |_ cpp-can-parser/ # <-- Put here the public headers
-```
 
 ## Compilation
 
@@ -69,15 +74,15 @@ The main feature of the library is the possibility of parsing a file representin
 
 ```c++
 #include <iostream>
-#include "cpp-can-parser/CANDatabase.h"
+#include <cpp-can-parser/CANDatabase.h>
 
 int main(int argc, char** argv) {
   try {
-    CANDatabase db = CANDatabase::fromFile(argv[1]);
+    CppCAN::CANDatabase db = CppCAN::CANDatabase::fromFile(argv[1]);
 
     // ...
   }
-  catch(const CANDatabaseException& e) {
+  catch(const CppCAN::CANDatabaseException& e) {
     std::cerr << "Error: " << e.what();
     return 1;
   }
@@ -86,10 +91,11 @@ int main(int argc, char** argv) {
 }
 ```
 
-One can see that `CANDatabase::fromFile()` can throw a CANDatabaseException. This happens when the parsing goes wrong (basically when the given file does not exist or when there is a syntax error). `CANDatabaseException::what()` will give you details on the error.
+One can see that `CppCAN::CANDatabase::fromFile()` can throw a CANDatabaseException. This happens when the parsing goes wrong (basically when the given file does not exist or when there is a syntax error). `CppCAN::CANDatabaseException::what()` will give you details on the error.
 
-If the data that you are using does not come from a file, it is also possible to use `CANDatabase::fromString("...")` which behaves just like its counterpart.
+If the data that you are using does not come from a file, it is also possible to use `CppCAN::CANDatabase::fromString("...")` which behaves just like its counterpart.
 
+*Note that one can construct its own database without parsing a file by diretly manipulating the reevant objects. See the next section for mmore info.*
 
 How to use the database
 =======================
@@ -128,16 +134,20 @@ Here are the most important properties of a `CANFrame` instance:
 * `comment()` : gives the registered comment (if any)
 * more properties to behave like a "standard container"
 
-Use `begin()`/`end()` and!/or a ranged-based for loop to iterate through the signals of the frame.
+Use `begin()`/`end()` and/or a ranged-based for loop to iterate through the signals of the frame.
 
 ```c++
-const CANFrame& frame = ...;
+const CppCAN::CANFrame& frame = ...;
 
 // Print the name of all the frames by increasing order
 for(const auto& sig : frame) {
   std::cout << "Signal: " << sig.second.name() << std::endl;
 }
 ```
+
+You can use `CppCAN::CANFrame::operator[](std::string)` and `CppCAN::CANFrame::at(std::string)` to
+access the signals individually. Be aware that they both throw an `std::out_of_range` exception if
+the signal does not exist.
 
 ## `CANDatabase`
 
@@ -149,7 +159,7 @@ Here are the most important properties of a `CANDatabase` instance:
 * more properties to behave like a "standard container"
 
 ```c++
-CANDatabase db = ...;
+CppCAN::CANDatabase db = ...;
 
 // Print the name of all the frames by increasing order
 size_t i = 0;
@@ -158,6 +168,41 @@ for(const auto& frame : db) {
 }
 ```
 
+Database analysis
+================
+
+C++ CAN Parser provides functions to analyze the coherence of a CAN Database. All the functtions are regrouped into the namespace `CppCAN::analysis`. They are notably used by `can-parse` and its *CHECKFRAME* operations.
+
+* `bool CppCAN::analysis::is_frame_layout_ok(const CppCAN::CANFrame&)`: returns true if the layout of the CANFrame is correct. An overload exists which gives a list of all the problematic signals. Check `CANDatabaseAnalysis.h` for more details.
+* `void CppCAN::analysis::assert_frame_layout(const CppCAN::CANFrame&)`: same as `is_frame_layout_ok()` but throws a `CANDatabaseException` is the layout is invalid.
+
+You must include `cpp-can-parser/CANDatabaseAnalysis.h` to access these functions.
+
+**Example:**
+
+```c++
+#include <cpp-can-parser/CANDatabaseAnalysis.h>
+#include <iostream>
+
+CppCAN::CANDatabase db = ...;
+
+// Boolean-based version ...
+for(const auto& frame : db) {
+  if(!CppCAN::analysis::is_frame_layout_ok(frame))
+    std::cerr << "Frame " << frame.name() << " contains a layout error" << std::endl;
+}
+
+// Assert-based version ...
+for(const auto& frame : db) {
+  try {
+    CppCAN::analysis::assert_frame_layout(frame);
+  } catch(const CppCAN::CANDatabaseException& e) {
+    std::cerr << "Frame " << frame.name() << " contains a layout error." 
+              << "Error details: " << e.what() << std::endl;
+  }
+}
+
+```
 can-parse
 =========
 
