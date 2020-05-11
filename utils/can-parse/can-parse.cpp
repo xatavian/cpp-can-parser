@@ -78,7 +78,7 @@ std::tuple<CanParseAction, std::string, uint32_t> extractAction(int argc, char**
         detail_frame = std::stoul(arg, nullptr, 0);        
         action = static_cast<CanParseAction>(static_cast<int>(action) + 1);
         continue;
-      } catch(const std::logic_error& e) {
+      } catch(const std::logic_error&) {
         // The argument is not related ....
         // Probably a file name, we stick to PrintAll/CheckAll
       }
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
   std::string src_file;
   CanParseAction action;
   uint32_t detail_frame;
-
+  
   try {
     std::tie(action, src_file, detail_frame) = extractAction(argc, argv);
   }
@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
     showUsage(std::cout, argv[0]);
     return 0;
   }
-
+  
   CANDatabase db;
   std::vector<CANDatabase::parsing_warning> warnings;
 
@@ -127,10 +127,11 @@ int main(int argc, char** argv) {
      db = std::move(CANDatabase::fromFile(src_file, &warnings));
   }
   catch (const CANDatabaseException& e) {
-    std::cerr << "An error happened while parsing the database: " 
+    std::cout << "An error happened while parsing the database: " 
               << e.what() << std::endl;
     return 2;
   }
+
   switch(action) {
     case PrintAll:
       print_all_frames(db);
@@ -149,6 +150,14 @@ int main(int argc, char** argv) {
     }
     break;
       
+    case CheckOne:
+    {
+      if(!check_single_frame(db, detail_frame, warnings)) {
+        return 3;
+      }
+    }
+    break;
+    
     case CheckAll:
       {
         if(!check_all_frames(db, warnings)) {

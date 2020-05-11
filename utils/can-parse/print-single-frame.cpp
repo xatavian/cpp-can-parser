@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <numeric>
+#include <sstream>
 
 class ConsoleTable {
 public:

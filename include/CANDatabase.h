@@ -6,6 +6,7 @@
 #include <exception>
 #include <map>
 
+#include "cpp_can_parser_export.h"
 #include "CANFrame.h"
 #include "CANDatabaseException.h"
 
@@ -23,13 +24,13 @@
  * If the database was parsed from a file, the filename() method can be used to
  * retrieve the name of the source file.
  */
-class CANDatabase {
+class CPP_CAN_PARSER_EXPORT CANDatabase {
 public:
   /**
    * @brief A parsing warning and its location
    */
   struct parsing_warning {
-    int line;
+    unsigned long long line;
     std::string description;
   };
 
@@ -73,7 +74,7 @@ public:
   /**
    * @brief Creates a CANDatabase object with no source file
    */
-  CANDatabase() = default;
+  CANDatabase();
 
   /**
    * @brief Creates a CANDatabase object that has been constructed from a file
@@ -85,23 +86,24 @@ public:
    * Creates a copy of the database: the individual frames are deep copied so there is no
    * shared memory betwwen the two databases.
    */
-  CANDatabase(const CANDatabase&) = default;
+  CANDatabase(const CANDatabase&);
 
   /**
    * @brief Makes a copy of the given database
    */
-  CANDatabase& operator=(const CANDatabase&) = default;
+  CANDatabase& operator=(const CANDatabase&);
 
   /**
    * @brief Moves a CANDatabase object. The CANFrame objects are NOT deep copied.
    */
-  CANDatabase(CANDatabase&&) = default;
+  CANDatabase(CANDatabase&&);
 
   /**
-   * @see CANDatabase(const CANDatabase&&)
+   * @see CANDatabase(CANDatabase&&)
    */
-  CANDatabase& operator=(CANDatabase&&) = default;
+  CANDatabase& operator=(CANDatabase&&);
 
+  ~CANDatabase();
 public:
   /**
    * @brief Get the frame with the given frame name
@@ -195,11 +197,8 @@ public:
   void removeFrame(const std::string& name);
 
 private:
-  std::string filename_;
-  container_type map_; // Index by CAN ID
-
-  std::map<unsigned long long, IDKey> intKeyIndex_;
-  std::map<std::string, IDKey> strKeyIndex_;
+  class CANDatabaseImpl;
+  CANDatabaseImpl* impl;
 };
 
 #endif
