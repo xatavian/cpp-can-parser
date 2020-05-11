@@ -1,6 +1,7 @@
 #include "DBCParser.h"
 #include "CANDatabaseException.h"
 #include <string>
+#include <sstream>
 #include <iostream>
 #include <algorithm>
 #include <iterator>
@@ -10,7 +11,8 @@
 using namespace DBCParser;
 
 static std::string VERSION_TOKEN = "VERSION";
-static std::string NS_SECTION_TOKEN = "NS_";
+static std::string NS_SECTION_TOKEN1 = "NS_";
+static std::string NS_SECTION_TOKEN2 = "_NS";
 static std::string BIT_TIMING_TOKEN = "BS_";
 static std::string NODE_DEF_TOKEN = "BU_";
 static std::string MESSAGE_DEF_TOKEN = "BO_";
@@ -32,8 +34,10 @@ static std::set<std::string> SUPPORTED_DBC_TOKENS = {
 
 static std::set<std::string> NS_TOKENS = {
   "CM_", "BA_DEF_", "BA_", "VAL_", "CAT_DEF_", "CAT_", "FILTER", "BA_DEF_DEF_",
-  "EV_DATA_", "ENVVAR_DATA", "SGTYPE_", "SGTYPE_VAL_", "BA_DEF_SGTYPE_", "BA_SGTYPE_",
-  "SIG_TYPE_DEF_"
+  "EV_DATA_", "ENVVAR_DATA_", "SGTYPE_", "SGTYPE_VAL_", "BA_DEF_SGTYPE_", "BA_SGTYPE_",
+  "SIG_TYPE_DEF_", "SIG_TYPE_REF_", "VAL_TABLE_", "SIG_GROUP_", "SIG_VALTYPE_",
+  "SIGTYPE_VALTYPE_", "BO_TX_BU_", "BA_DEF_REL_", "BA_REL_", "BA_DEF_DEF_REL_", 
+  "BU_SG_REL_", "BU_EV_REL_", "BU_BO_REL_"
 };
 
 static std::set<std::string> UNSUPPORTED_DBC_TOKENS = {
@@ -63,7 +67,8 @@ std::string parseVersionSection(Tokenizer& tokenizer) {
 
 static void
 parseNSSection(Tokenizer& tokenizer) {
-  if(!peek_token(tokenizer, NS_SECTION_TOKEN))
+  if(!peek_token(tokenizer, NS_SECTION_TOKEN1) && 
+     !peek_token(tokenizer, NS_SECTION_TOKEN2)) // Sometimes, one can find both NS_ ans _NS in DBC files
     return;
 
   assert_token(tokenizer, ":");

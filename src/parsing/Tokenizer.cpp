@@ -264,7 +264,7 @@ std::string Tokenizer::parseNumber(bool& is_float) {
       else if(currentChar == '-') {
         result += currentChar;
         is_float = true;
-        currentChar == getNextChar();
+        currentChar = getNextChar();
       }
     }
   }
