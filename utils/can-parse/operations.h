@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <string>
 #include <stdexcept>
-
-class CANDatabase;
+#include <vector>
+#include "CANDatabase.h"
 
 namespace CppCAN {
 namespace can_parse {
@@ -22,7 +22,13 @@ namespace can_parse {
     /**
      * @brief Checks the validity of all the frames of the database
      */
-    void check_all_frames(CANDatabase& db);
+    bool check_single_frame(CANDatabase& db, uint32_t can_id, 
+                             const std::vector<CANDatabase::parsing_warning>& warnings);
+
+    /**
+     * @brief Checks the validity of all the frames of the database
+     */
+    bool check_all_frames(CANDatabase& db, const std::vector<CANDatabase::parsing_warning>& warnings);
 
     /**
      * Exception thrown by any operation if an error happens during their

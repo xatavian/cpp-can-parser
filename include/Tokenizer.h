@@ -38,8 +38,8 @@ private:
   bool started;
 
 protected:
-  unsigned long long charCnt;
-  unsigned long long lineCnt;
+  size_t charCnt;
+  size_t lineCnt;
   bool addLine;
 };
 

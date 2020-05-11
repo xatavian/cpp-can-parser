@@ -22,7 +22,7 @@ void CppCAN::can_parse::print_all_frames(CANDatabase& db) {
   size_t i = 0;
 
   // First, explore the database to find "pretty-printing" parameters
-  int frame_name_maxsize = 12; // At least a reasonable column size
+  size_t frame_name_maxsize = 12; // At least a reasonable column size
   for(const auto& frame : db) {
     if(frame.second.name().size() > frame_name_maxsize)
       frame_name_maxsize = frame.second.name().size() + 1;

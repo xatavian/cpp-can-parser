@@ -7,10 +7,13 @@
 #include <memory>
 
 namespace DBCParser {
-  CANDatabase fromTokenizer(const std::string& name,
-                            Tokenizer& tokenizer);
+  CANDatabase fromTokenizer(
+    const std::string& name, Tokenizer& tokenizer,
+    std::vector<CANDatabase::parsing_warning>* warnings = nullptr);
 
-  CANDatabase fromTokenizer(Tokenizer& tokenizer);
+  CANDatabase fromTokenizer(
+    Tokenizer& tokenizer, 
+    std::vector<CANDatabase::parsing_warning>* warnings = nullptr);
 };
 
 #endif

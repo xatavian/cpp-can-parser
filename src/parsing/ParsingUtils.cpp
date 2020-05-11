@@ -142,10 +142,9 @@ void throw_error(const std::string& category, const std::string& description,
   );
 }
 
-void warning(const std::string& description, unsigned long long line) {
-  std::cerr << "WARNING: "
-            << description
-            << " at line "
-            << line + 1
-            << std::endl;
+void warning(std::vector<CANDatabase::parsing_warning>* warnings, const std::string& description, unsigned long long line) {
+  if(warnings == nullptr)
+    return;
+
+  warnings->push_back({ line, description });
 }

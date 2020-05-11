@@ -1,25 +1,18 @@
 #include "DBCParser.h"
 #include "CANDatabaseException.h"
 #include <string>
+#include <sstream>
 #include <iostream>
 #include <algorithm>
 #include <iterator>
+#include <iomanip>
 #include "ParsingUtils.h"
 
 using namespace DBCParser;
 
-CANSignal                  parseSignal(Tokenizer& tokenizer);
-CANFrame                   parseFrame(Tokenizer& tokenizer);
-std::set<std::string>      parseECUs(Tokenizer& tokenizer);
-void                       parseNewSymbols(Tokenizer& tokenizer);
-void                       addBADirective(Tokenizer& tokenizer,
-                                          CANDatabase& db);
-void                       addComment(Tokenizer& tokenizer, CANDatabase& db);
-void                       parseSignalChoices(Tokenizer& tokenizer,
-                                           CANDatabase& db);
-
 static std::string VERSION_TOKEN = "VERSION";
-static std::string NS_SECTION_TOKEN = "NS_";
+static std::string NS_SECTION_TOKEN1 = "NS_";
+static std::string NS_SECTION_TOKEN2 = "_NS";
 static std::string BIT_TIMING_TOKEN = "BS_";
 static std::string NODE_DEF_TOKEN = "BU_";
 static std::string MESSAGE_DEF_TOKEN = "BO_";
@@ -41,8 +34,10 @@ static std::set<std::string> SUPPORTED_DBC_TOKENS = {
 
 static std::set<std::string> NS_TOKENS = {
   "CM_", "BA_DEF_", "BA_", "VAL_", "CAT_DEF_", "CAT_", "FILTER", "BA_DEF_DEF_",
-  "EV_DATA_", "ENVVAR_DATA", "SGTYPE_", "SGTYPE_VAL_", "BA_DEF_SGTYPE_", "BA_SGTYPE_",
-  "SIG_TYPE_DEF_"
+  "EV_DATA_", "ENVVAR_DATA_", "SGTYPE_", "SGTYPE_VAL_", "BA_DEF_SGTYPE_", "BA_SGTYPE_",
+  "SIG_TYPE_DEF_", "SIG_TYPE_REF_", "VAL_TABLE_", "SIG_GROUP_", "SIG_VALTYPE_",
+  "SIGTYPE_VALTYPE_", "BO_TX_BU_", "BA_DEF_REL_", "BA_REL_", "BA_DEF_DEF_REL_", 
+  "BU_SG_REL_", "BU_EV_REL_", "BU_BO_REL_"
 };
 
 static std::set<std::string> UNSUPPORTED_DBC_TOKENS = {
@@ -56,49 +51,8 @@ bool is_dbc_token(const Token& token) {
          UNSUPPORTED_DBC_TOKENS.count(token.image) > 0;
 }
 
-void addBADirective(Tokenizer& tokenizer, CANDatabase& db) {
-  Token infoType;
-  assert_current_token(tokenizer, "BA_");
-
-  infoType = assert_token(tokenizer, Token::StringLiteral);
-  if(infoType == "GenMsgCycleTime" || infoType == "CycleTime") {
-    assert_token(tokenizer, "BO_");
-    Token frameId = assert_token(tokenizer, Token::Number);
-    Token period = assert_token(tokenizer, Token::Number);
-    assert_token(tokenizer, ";");
-
-    if(period == Token::NegativeNumber) {
-      warning("cannot set negative period",
-              tokenizer.lineCount());
-      return;
-    }
-    else if(frameId == Token::NegativeNumber) {
-      warning("invalid frame id",
-              tokenizer.lineCount());
-      return;
-    }
-
-    unsigned int iFrameId = frameId.toUInt();
-    unsigned int iPeriod = period.toUInt();
-
-    try {
-      db.at(iFrameId).setPeriod(iPeriod);
-    }
-    catch (const std::out_of_range& e) {
-      std::string tempStr = std::to_string(iFrameId) + " does not exist at line " + std::to_string(tokenizer.lineCount());
-      throw CANDatabaseException(tempStr);
-    }
-  }
-  else {
-    std::cout << "WARNING: Unrecognized BA_ command " << infoType.image
-              << " at line " << tokenizer.lineCount()
-              << std::endl;
-    tokenizer.skipUntil(";");
-  }
-}
-
-CANDatabase DBCParser::fromTokenizer(Tokenizer& tokenizer) {
-  return fromTokenizer("", tokenizer);
+CANDatabase DBCParser::fromTokenizer(Tokenizer& tokenizer, std::vector<CANDatabase::parsing_warning>* warnings) {
+  return fromTokenizer("", tokenizer, warnings);
 }
 
 std::string parseVersionSection(Tokenizer& tokenizer) {
@@ -113,7 +67,8 @@ std::string parseVersionSection(Tokenizer& tokenizer) {
 
 static void
 parseNSSection(Tokenizer& tokenizer) {
-  if(!peek_token(tokenizer, NS_SECTION_TOKEN))
+  if(!peek_token(tokenizer, NS_SECTION_TOKEN1) && 
+     !peek_token(tokenizer, NS_SECTION_TOKEN2)) // Sometimes, one can find both NS_ ans _NS in DBC files
     return;
 
   assert_token(tokenizer, ":");
@@ -141,7 +96,7 @@ parseBitTimingSection(Tokenizer& tokenizer) {
 }
 
 static void
-parseNodesSection(Tokenizer& tokenizer, CANDatabase& db) {
+parseNodesSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
   assert_token(tokenizer, NODE_DEF_TOKEN);
   assert_token(tokenizer, ":");
 
@@ -157,7 +112,14 @@ parseNodesSection(Tokenizer& tokenizer, CANDatabase& db) {
   while(currentToken != Token::Eof &&
         !is_dbc_token(currentToken)) {
     
-    nodes.insert(currentToken.image);
+    if(nodes.count(currentToken.image) > 0) {
+      warning(warnings, currentToken.image + " is an already registered node name", 
+              tokenizer.lineCount());
+    }
+    else {
+      nodes.insert(currentToken.image);
+    }
+    
     currentToken = assert_token(tokenizer, Token::Identifier);
   }
 
@@ -165,19 +127,22 @@ parseNodesSection(Tokenizer& tokenizer, CANDatabase& db) {
 }
 
 static void
-parseUnsupportedCommandSection(Tokenizer& tokenizer, const std::string& command) {
+parseUnsupportedCommandSection(Tokenizer& tokenizer, const std::string& command, std::vector<CANDatabase::parsing_warning>* warnings) {
   while(peek_token(tokenizer, command)) {
     // In DBC files, some instructions don't finish by a semi-colon.
     // Fotunately, all the unsupported ones do finish by a semi-colon.
-    warning("Skipped \"" + command + "\" instruction because it is not supported", tokenizer.lineCount()); 
+    warning(
+      warnings, 
+      "Skipped \"" + command + "\" instruction "
+      "because it is not supported", 
+      tokenizer.lineCount()); 
     tokenizer.skipUntil(";");
   }
 }
 
 static void
-parseSigDefInstruction(Tokenizer& tokenizer, CANFrame& frame) {
+parseSigDefInstruction(Tokenizer& tokenizer, CANFrame& frame, std::vector<CANDatabase::parsing_warning>* warnings ) {
   assert_current_token(tokenizer, SIG_DEF_TOKEN);
-
 
   Token name = assert_token(tokenizer, Token::Identifier);
   assert_token(tokenizer, ":");
@@ -205,6 +170,13 @@ parseSigDefInstruction(Tokenizer& tokenizer, CANFrame& frame) {
     targetECU = assert_token(tokenizer, Token::Identifier);
   }
 
+  if(frame.contains(name.image)) {
+    std::stringstream ss;
+    ss << "Double declaration of the signal " << std::quoted(name.image)
+       << " in frame " << frame.can_id();  
+    warning(warnings, ss.str(), tokenizer.lineCount());
+  }
+
   frame.addSignal(
     CANSignal(
       name.image,
@@ -220,7 +192,7 @@ parseSigDefInstruction(Tokenizer& tokenizer, CANFrame& frame) {
 }
 
 static void
-parseMsgDefSection(Tokenizer& tokenizer, CANDatabase& db) {
+parseMsgDefSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
   while(peek_token(tokenizer, MESSAGE_DEF_TOKEN)) {
     Token id = assert_token(tokenizer, Token::PositiveNumber);
     Token name = assert_token(tokenizer, Token::Identifier);
@@ -230,11 +202,21 @@ parseMsgDefSection(Tokenizer& tokenizer, CANDatabase& db) {
     Token dlc = assert_token(tokenizer, Token::PositiveNumber);
     Token ecu = assert_token(tokenizer, Token::Identifier);
 
+    if(db.contains(id.toUInt())) {
+      throw_error("Database error", "Double declaration of frame with CAN ID " + id.image, tokenizer.lineCount());
+    }
+
+    if(db.contains(name.image)) {
+      std::stringstream ss;
+      ss << "Double declaration of the frame with name " << std::quoted(name.image);
+      warning(warnings, ss.str(), tokenizer.lineCount());
+    }
+
     CANFrame new_frame(
       name.image, id.toUInt(), dlc.toUInt());
 
     while(peek_token(tokenizer, SIG_DEF_TOKEN)) {
-      parseSigDefInstruction(tokenizer, new_frame);
+      parseSigDefInstruction(tokenizer, new_frame, warnings);
     }
 
     db.addFrame(new_frame);
@@ -242,7 +224,7 @@ parseMsgDefSection(Tokenizer& tokenizer, CANDatabase& db) {
 }
 
 static void
-parseMsgCommentInstruction(Tokenizer& tokenizer, CANDatabase& db) {
+parseMsgCommentInstruction(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
   Token targetFrame = assert_token(tokenizer, Token::PositiveNumber);
   Token comment = assert_token(tokenizer, Token::StringLiteral);
   assert_token(tokenizer, ";");
@@ -252,26 +234,35 @@ parseMsgCommentInstruction(Tokenizer& tokenizer, CANDatabase& db) {
     db.at(frame_id).setComment(comment.image);
   }
   else {
-    warning("Invalid comment instruction: Frame with id " + targetFrame.image + " does not exist", tokenizer.lineCount());
+    warning(
+      warnings, 
+      "Invalid comment instruction: Frame with "
+      "id " + targetFrame.image + " does not exist", 
+      tokenizer.lineCount());
   }
 }
 
 static void
-parseSigCommentInstruction(Tokenizer& tokenizer, CANDatabase& db) {
+parseSigCommentInstruction(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
   Token targetFrame = assert_token(tokenizer, Token::PositiveNumber);
   Token targetSignal = assert_token(tokenizer, Token::Identifier);
   Token comment = assert_token(tokenizer, Token::StringLiteral);
   assert_token(tokenizer, ";");
 
   if(!db.contains(targetFrame.toUInt())) {
-    warning("Invalid comment instruction: Frame with id " + targetFrame.image + " does not exist", tokenizer.lineCount());
+    warning(warnings, "Invalid comment instruction: Frame with id " + targetFrame.image + " does not exist", tokenizer.lineCount());
     return;
   }
 
   CANFrame& frame = db[targetFrame.toUInt()];
   if(!frame.contains(targetSignal.image)) {
-    warning("Invalid comment instruction: Frame with id " + targetFrame.image + " does not have "
-            "a signal named \"" + targetSignal.image + "\"", tokenizer.lineCount());
+    warning(
+      warnings, 
+      "Invalid comment instruction: Frame with "
+      "id " + targetFrame.image + " does not have a signal "
+      "named \"" + targetSignal.image + "\"", 
+      tokenizer.lineCount()
+    );
   }
   else {
     frame[targetSignal.image].setComment(comment.image);
@@ -280,37 +271,37 @@ parseSigCommentInstruction(Tokenizer& tokenizer, CANDatabase& db) {
 }
 
 static void
-parseCommentSection(Tokenizer& tokenizer, CANDatabase& db) {
+parseCommentSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
   while(peek_token(tokenizer, COMMENT_TOKEN)) {
     if(peek_token(tokenizer, Token::StringLiteral)) {
       // TODO: handle global comment
       assert_token(tokenizer, ";");
-      warning("Unsupported comment instruction", tokenizer.lineCount());
+      warning(warnings, "Unsupported comment instruction", tokenizer.lineCount());
       continue;
     }
 
     Token commentType = assert_token(tokenizer, Token::Identifier);
     if(commentType == MESSAGE_DEF_TOKEN) {
-      parseMsgCommentInstruction(tokenizer, db);
+      parseMsgCommentInstruction(tokenizer, db, warnings);
     }
     else if(commentType == SIG_DEF_TOKEN) {
-      parseSigCommentInstruction(tokenizer, db);
+      parseSigCommentInstruction(tokenizer, db, warnings);
     }
     else {
-      warning("Unsupported comment instruction", tokenizer.lineCount());
+      warning(warnings, "Unsupported comment instruction", tokenizer.lineCount());
       tokenizer.skipUntil(";");
     }
   }
 }
 
 static void
-parseAttrValSection(Tokenizer& tokenizer, CANDatabase& db) {
+parseAttrValSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
   while(peek_token(tokenizer, ATTR_VAL_TOKEN)) {
     Token attrType = assert_token(tokenizer, Token::StringLiteral);
 
     if(attrType != "GenMsgCycleTime" && attrType != "CycleTime") {
       tokenizer.skipUntil(";");
-      warning("Unsupported BA_ operation", tokenizer.lineCount());
+      warning(warnings, "Unsupported BA_ operation", tokenizer.lineCount());
       continue;
     }
  
@@ -323,13 +314,13 @@ parseAttrValSection(Tokenizer& tokenizer, CANDatabase& db) {
       db[frameId.toUInt()].setPeriod(period.toUInt());
     }
     catch (const std::out_of_range& e) {
-     warning(frameId.image + " does not exist", tokenizer.lineCount());
+     warning(warnings, frameId.image + " does not exist", tokenizer.lineCount());
     }
   }
 }
 
 static void
-parseValDescSection(Tokenizer& tokenizer, CANDatabase& db) {
+parseValDescSection(Tokenizer& tokenizer, CANDatabase& db, std::vector<CANDatabase::parsing_warning>* warnings) {
   while(peek_token(tokenizer, SIG_VAL_DEF_TOKEN)) {
     Token targetFrame = assert_token(tokenizer, Token::PositiveNumber);
     Token targetSignal = assert_token(tokenizer, Token::Identifier);
@@ -344,14 +335,21 @@ parseValDescSection(Tokenizer& tokenizer, CANDatabase& db) {
     }
 
     if(!db.contains(targetFrame.toUInt())) {
-      warning("Invalid VAL_ instruction: Frame with id " + targetFrame.image + " does not exist", tokenizer.lineCount());
+      warning(
+        warnings, 
+        "Invalid VAL_ instruction: Frame with id " + 
+        targetFrame.image + " does not exist", 
+        tokenizer.lineCount());
       continue;
     }
 
     CANFrame& frame = db[targetFrame.toUInt()];
     if(!frame.contains(targetSignal.image)) {
-      warning("Invalid VAL_ instruction: Frame " + targetFrame.image + " does not have "
-              "a signal named \"" + targetSignal.image + "\"", tokenizer.lineCount());
+      warning(
+        warnings, 
+        "Invalid VAL_ instruction: Frame " + targetFrame.image + 
+        " does not have a signal named \"" + targetSignal.image + "\"", 
+        tokenizer.lineCount());
     }
     else {
       frame[targetSignal.image].setChoices(targetChoices);
@@ -360,30 +358,42 @@ parseValDescSection(Tokenizer& tokenizer, CANDatabase& db) {
 }
 
 
-CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokenizer) {
+CANDatabase DBCParser::fromTokenizer(const std::string& name, Tokenizer& tokenizer, std::vector<CANDatabase::parsing_warning>* warnings) {
   CANDatabase result(name);
 
   parseVersionSection(tokenizer);
   parseNSSection(tokenizer);
   parseBitTimingSection(tokenizer);
-  parseNodesSection(tokenizer, result);
-  parseUnsupportedCommandSection(tokenizer, "VAL_TABLE_");
-  parseMsgDefSection(tokenizer, result);
-  parseUnsupportedCommandSection(tokenizer, "BO_TX_BU_");
-  parseUnsupportedCommandSection(tokenizer, "EV_");
-  parseUnsupportedCommandSection(tokenizer, "SGTYPE_");
-  parseCommentSection(tokenizer, result);
-  parseUnsupportedCommandSection(tokenizer, "BA_DEF_");
-  parseUnsupportedCommandSection(tokenizer, "SIG_VALTYPE_");
-  parseUnsupportedCommandSection(tokenizer, "BA_DEF_DEF_");
-  parseAttrValSection(tokenizer, result);
-  parseValDescSection(tokenizer, result);
+  parseNodesSection(tokenizer, result, warnings);
+  parseUnsupportedCommandSection(tokenizer, "VAL_TABLE_", warnings);
+  parseMsgDefSection(tokenizer, result, warnings);
+  parseUnsupportedCommandSection(tokenizer, "BO_TX_BU_", warnings);
+  parseUnsupportedCommandSection(tokenizer, "EV_", warnings);
+  parseUnsupportedCommandSection(tokenizer, "SGTYPE_", warnings);
+  parseCommentSection(tokenizer, result, warnings);
+  parseUnsupportedCommandSection(tokenizer, "BA_DEF_", warnings);
+  parseUnsupportedCommandSection(tokenizer, "SIG_VALTYPE_", warnings);
+  parseUnsupportedCommandSection(tokenizer, "BA_DEF_DEF_", warnings);
+  parseAttrValSection(tokenizer, result, warnings);
+  parseValDescSection(tokenizer, result, warnings);
 
   while(!is_token(tokenizer, Token::Eof)) {
-    warning("Unexpected token " + tokenizer.getCurrentToken().image + 
-            " at line " + std::to_string(tokenizer.lineCount())     +
-            " (maybe is it an unsupported instruction ? maybe is it a misplaced instruction ?)",
-            tokenizer.lineCount());
+    // We have a syntax error because we have a token which does not
+    // represent any command.
+    if(!is_dbc_token(tokenizer.getCurrentToken())) {
+      throw_error("Syntax error", 
+                  "Unexpected token \"" + tokenizer.getCurrentToken().image + "\"", 
+                  tokenizer.lineCount());
+    }
+
+    // We have a valid DBC instruction, but we ignore it because
+    // it is not in a valid position.
+    warning(
+      warnings,
+      "Unexpected token " + tokenizer.getCurrentToken().image + 
+      " at line " + std::to_string(tokenizer.lineCount())     +
+      " (maybe is it an unsupported instruction ? maybe is it a misplaced instruction ?)",
+      tokenizer.lineCount());
     tokenizer.skipUntil(";");
   }
 

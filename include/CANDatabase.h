@@ -6,6 +6,7 @@
 #include <exception>
 #include <map>
 
+#include "cpp_can_parser_export.h"
 #include "CANFrame.h"
 #include "CANDatabaseException.h"
 
@@ -23,21 +24,34 @@
  * If the database was parsed from a file, the filename() method can be used to
  * retrieve the name of the source file.
  */
-class CANDatabase {
+class CPP_CAN_PARSER_EXPORT CANDatabase {
+public:
+  /**
+   * @brief A parsing warning and its location
+   */
+  struct parsing_warning {
+    unsigned long long line;
+    std::string description;
+  };
+
 public:
   /**
    * @brief Parse a CANDatabase from the given source file.
    * @param filename Path to the file to parse
+   * @param warnings (Optional) Filled with all the warnings found during the parsing
    * @throw CANDatabaseException if the parsing failed
    */
-  static CANDatabase fromFile(const std::string& filename);
+  static CANDatabase fromFile(
+    const std::string& filename, std::vector<parsing_warning>* warnings = nullptr);
 
   /**
    * @brief Construct a CANDatabase object from a database described by src_string
    * @param src_string Source string to parse
+   * @param warnings (Optional) Filled with all the warnings found during the parsing
    * @throw CANDatabaseException if the parsing failed
    */
-  static CANDatabase fromString(const std::string& src_string);
+  static CANDatabase fromString(
+    const std::string& src_string, std::vector<parsing_warning>* warnings = nullptr);
 
 public:
   struct IDKey {
@@ -60,7 +74,7 @@ public:
   /**
    * @brief Creates a CANDatabase object with no source file
    */
-  CANDatabase() = default;
+  CANDatabase();
 
   /**
    * @brief Creates a CANDatabase object that has been constructed from a file
@@ -72,23 +86,24 @@ public:
    * Creates a copy of the database: the individual frames are deep copied so there is no
    * shared memory betwwen the two databases.
    */
-  CANDatabase(const CANDatabase&) = default;
+  CANDatabase(const CANDatabase&);
 
   /**
    * @brief Makes a copy of the given database
    */
-  CANDatabase& operator=(const CANDatabase&) = default;
+  CANDatabase& operator=(const CANDatabase&);
 
   /**
    * @brief Moves a CANDatabase object. The CANFrame objects are NOT deep copied.
    */
-  CANDatabase(CANDatabase&&) = default;
+  CANDatabase(CANDatabase&&);
 
   /**
-   * @see CANDatabase(const CANDatabase&&)
+   * @see CANDatabase(CANDatabase&&)
    */
-  CANDatabase& operator=(CANDatabase&&) = default;
+  CANDatabase& operator=(CANDatabase&&);
 
+  ~CANDatabase();
 public:
   /**
    * @brief Get the frame with the given frame name
@@ -182,11 +197,8 @@ public:
   void removeFrame(const std::string& name);
 
 private:
-  std::string filename_;
-  container_type map_; // Index by CAN ID
-
-  std::map<unsigned long long, IDKey> intKeyIndex_;
-  std::map<std::string, IDKey> strKeyIndex_;
+  class CANDatabaseImpl;
+  CANDatabaseImpl* impl;
 };
 
 #endif

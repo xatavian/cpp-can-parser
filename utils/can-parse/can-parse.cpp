@@ -7,8 +7,6 @@
 #include "operations.h"
 #include <iomanip>
 
-using namespace CppCAN::can_parse;
-
 enum CanParseAction {
   None,
   PrintAll,
@@ -77,16 +75,10 @@ std::tuple<CanParseAction, std::string, uint32_t> extractAction(int argc, char**
       check_args = false;
       
       try {
-        if(arg.compare(0, 2, "0x") == 0 || arg.compare(0, 2, "0X") == 0) {
-          detail_frame = std::stoul(arg, nullptr, 16);
-        }
-        else {
-          detail_frame = std::stoul(arg);
-        }
-        
+        detail_frame = std::stoul(arg, nullptr, 0);        
         action = static_cast<CanParseAction>(static_cast<int>(action) + 1);
         continue;
-      } catch(const std::logic_error& e) {
+      } catch(const std::logic_error&) {
         // The argument is not related ....
         // Probably a file name, we stick to PrintAll/CheckAll
       }
@@ -108,10 +100,12 @@ std::tuple<CanParseAction, std::string, uint32_t> extractAction(int argc, char**
 }
 
 int main(int argc, char** argv) {
+  using namespace CppCAN::can_parse;
+
   std::string src_file;
   CanParseAction action;
   uint32_t detail_frame;
-
+  
   try {
     std::tie(action, src_file, detail_frame) = extractAction(argc, argv);
   }
@@ -125,17 +119,19 @@ int main(int argc, char** argv) {
     showUsage(std::cout, argv[0]);
     return 0;
   }
-
+  
   CANDatabase db;
+  std::vector<CANDatabase::parsing_warning> warnings;
 
   try {
-     db = std::move(CANDatabase::fromFile(src_file));
+     db = std::move(CANDatabase::fromFile(src_file, &warnings));
   }
   catch (const CANDatabaseException& e) {
-    std::cerr << "An error happened while parsing the database: " 
+    std::cout << "An error happened while parsing the database: " 
               << e.what() << std::endl;
     return 2;
   }
+
   switch(action) {
     case PrintAll:
       print_all_frames(db);
@@ -154,8 +150,21 @@ int main(int argc, char** argv) {
     }
     break;
       
+    case CheckOne:
+    {
+      if(!check_single_frame(db, detail_frame, warnings)) {
+        return 3;
+      }
+    }
+    break;
+    
     case CheckAll:
-      check_all_frames(db);
+      {
+        if(!check_all_frames(db, warnings)) {
+          // CheckAll failed, we return an non-zero error-code.
+          return 3;
+        }
+      }
       break;
 
     case Help:
