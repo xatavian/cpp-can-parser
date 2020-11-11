@@ -1,7 +1,7 @@
 #ifndef DBCParser_H
 #define DBCParser_H
 
-#include "CANDatabase.h"
+#include "cpp-can-parser/CANDatabase.h"
 #include "Tokenizer.h"
 #include <set>
 #include <memory>
@@ -15,9 +15,9 @@ CANDatabase fromTokenizer(
   std::vector<CANDatabase::parsing_warning>* warnings = nullptr);
 
 CANDatabase fromTokenizer(
-  details::Tokenizer& tokenizer, 
+  details::Tokenizer& tokenizer,
   std::vector<CANDatabase::parsing_warning>* warnings = nullptr);
-  
+
 }
 }
 }

@@ -1,4 +1,4 @@
-#include "CANDatabase.h"
+#include "cpp-can-parser/CANDatabase.h"
 #include "DBCParser.h"
 #include <utility>
 #include <iostream>
@@ -17,7 +17,7 @@ public:
   CANDatabaseImpl& operator=(CANDatabaseImpl&&) = delete;
 
   CANDatabaseImpl(const std::string& filename)
-    : filename_(filename), map_(), 
+    : filename_(filename), map_(),
       intKeyIndex_(), strKeyIndex_() {
 
   }
@@ -80,7 +80,7 @@ CANDatabase CANDatabase::fromFile(const std::string& filename, std::vector<parsi
   if (!test_stream.good()) {
     throw CANDatabaseException("Cannot find file " + filename);
   }
-  
+
   dtl::FileTokenizer tokenizer(filename);
   return CppCAN::parser::dbc::fromTokenizer(filename, tokenizer, warnings);
 }
@@ -125,7 +125,7 @@ void CANDatabase::removeFrame(const std::string& name) {
     impl->map_.erase(impl->map_.find(map_key));
     impl->strKeyIndex_.erase(impl->strKeyIndex_.find(map_key.str_key));
     impl->intKeyIndex_.erase(impl->intKeyIndex_.find(map_key.int_key));
-  } 
+  }
   catch(const std::out_of_range&) {
     std::string excepText = "Cannot remove frame with name " + name;
     throw std::out_of_range(excepText);
@@ -139,7 +139,7 @@ void CANDatabase::removeFrame(unsigned int can_id) {
     impl->map_.erase(impl->map_.find(map_key));
     impl->strKeyIndex_.erase(impl->strKeyIndex_.find(map_key.str_key));
     impl->intKeyIndex_.erase(impl->intKeyIndex_.find(map_key.int_key));
-  } 
+  }
   catch(const std::out_of_range&) {
     std::string excepText = "Cannot remove frame with CAN ID ";
     excepText += std::to_string(can_id);
@@ -155,12 +155,12 @@ bool CANDatabase::contains(const std::string& name) const {
   return impl->strKeyIndex_.find(name) != impl->strKeyIndex_.end();
 }
 
-CANDatabase::iterator 
+CANDatabase::iterator
 CANDatabase::begin() {
   return impl->map_.begin();
 }
 
-CANDatabase::const_iterator 
+CANDatabase::const_iterator
 CANDatabase::begin() const {
   return impl->map_.begin();
 }
@@ -170,12 +170,12 @@ CANDatabase::cbegin() const {
   return impl->map_.cbegin();
 }
 
-CANDatabase::iterator 
+CANDatabase::iterator
 CANDatabase::end() {
   return impl->map_.end();
 }
 
-CANDatabase::const_iterator 
+CANDatabase::const_iterator
 CANDatabase::end() const {
   return impl->map_.end();
 }
@@ -185,12 +185,12 @@ CANDatabase::cend() const {
   return impl->map_.cend();
 }
 
-CANDatabase::reverse_iterator 
+CANDatabase::reverse_iterator
 CANDatabase::rbegin() {
   return impl->map_.rbegin();
 }
 
-CANDatabase::const_reverse_iterator 
+CANDatabase::const_reverse_iterator
 CANDatabase::rbegin() const {
   return impl->map_.rbegin();
 }
@@ -200,12 +200,12 @@ CANDatabase::crbegin() const {
   return impl->map_.crbegin();
 }
 
-CANDatabase::reverse_iterator 
+CANDatabase::reverse_iterator
 CANDatabase::rend() {
   return impl->map_.rend();
 }
 
-CANDatabase::const_reverse_iterator 
+CANDatabase::const_reverse_iterator
 CANDatabase::rend() const {
   return impl->map_.rend();
 }

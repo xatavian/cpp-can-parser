@@ -1,11 +1,11 @@
-#include "CANDatabase.h"
+#include "cpp-can-parser/CANDatabase.h"
 #include <utility>
 #include <iostream>
 
 using namespace CppCAN;
 
-CANFrame::CANFrame(const std::string& name, unsigned long long can_id, 
-                   unsigned int dlc, unsigned int period, 
+CANFrame::CANFrame(const std::string& name, unsigned long long can_id,
+                   unsigned int dlc, unsigned int period,
                    const std::string& comment)
   : name_(name), can_id_(can_id), dlc_(dlc), period_(0), comment_(comment) {}
 
@@ -46,7 +46,7 @@ const CANSignal& CANFrame::at(const std::string& name) const {
 }
 
 CANSignal& CANFrame::at(const std::string& name) {
-  return map_.at(name); 
+  return map_.at(name);
 }
 
 const CANSignal& CANFrame::operator[](const std::string& name) const {
@@ -57,7 +57,7 @@ CANSignal& CANFrame::operator[](const std::string& name) {
   return at(name);
 }
 
-void CANFrame::addSignal(const CANSignal& signal) {  
+void CANFrame::addSignal(const CANSignal& signal) {
   map_.insert(std::make_pair(signal.name(), signal));
 }
 
@@ -65,11 +65,11 @@ void CANFrame::removeSignal(const std::string& name) {
 
   auto ite = map_.find(name);
   if(ite == map_.end()) {
-    std::string excepText = "Cannot remove signal with name \"" + name + 
+    std::string excepText = "Cannot remove signal with name \"" + name +
                             "\" from frame \"" + this->name() + "\"";
     throw std::out_of_range(excepText);
   }
-  
+
   map_.erase(ite);
 }
 

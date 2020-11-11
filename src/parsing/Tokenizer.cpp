@@ -1,5 +1,5 @@
 #include "Tokenizer.h"
-#include "CANDatabase.h"
+#include "cpp-can-parser/CANDatabase.h"
 #include <cctype>
 #include <iostream>
 
@@ -45,11 +45,11 @@ bool Token::operator==(const std::string& other) const {
 
 bool Token::operator==(Token::Type other) const {
   if(type == Number) {
-    return other == Number || other == PositiveNumber || 
+    return other == Number || other == PositiveNumber ||
            other == NegativeNumber || other == FloatingPointNumber;
   }
   else if(other == Number) {
-    return type == Number || type == PositiveNumber || 
+    return type == Number || type == PositiveNumber ||
            type == NegativeNumber || type == FloatingPointNumber;
   }
 
@@ -173,7 +173,7 @@ const Token& Tokenizer::getNextToken() {
     else { // Negative number
       bool is_float;
       std::string literal = "-" + parseNumber(is_float);
-      
+
       currentToken = Token::createNumber(literal, false, is_float);
     }
   }
@@ -239,7 +239,7 @@ void Tokenizer::skipLine() {
 
 std::string Tokenizer::parseNumber(bool& is_float) {
   std::string result(1, getCurrentChar());
-  
+
   char currentChar = getNextChar();
   is_float = false;
 
@@ -255,7 +255,7 @@ std::string Tokenizer::parseNumber(bool& is_float) {
     else if(currentChar == 'e') {
       result += currentChar;
       currentChar = getNextChar();
-      
+
       // Plus "in the wild" are not considered to be part of a number
       // They are only allowed after "e" (eg. 3e+002)
       if(currentChar == '+') {
@@ -326,7 +326,7 @@ char StringTokenizer::doGetNextChar() {
     return 0;
 
   char result = src_str[charCnt++];
-  
+
   if (addLine) {
     lineCnt += 1;
     addLine = false;
