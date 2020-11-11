@@ -15,9 +15,9 @@ CANDatabase fromTokenizer(
   std::vector<CANDatabase::parsing_warning>* warnings = nullptr);
 
 CANDatabase fromTokenizer(
-  details::Tokenizer& tokenizer, 
+  details::Tokenizer& tokenizer,
   std::vector<CANDatabase::parsing_warning>* warnings = nullptr);
-  
+
 }
 }
 }

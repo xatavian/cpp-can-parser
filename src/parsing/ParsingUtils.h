@@ -16,7 +16,7 @@ void throw_error(
   unsigned long long line);
 
 void warning(
-  std::vector<CANDatabase::parsing_warning>* warnings, 
+  std::vector<CANDatabase::parsing_warning>* warnings,
   const std::string& description, unsigned long long line);
 
 const Token&
