@@ -75,4 +75,7 @@ if(BUILD_TESTING)
 	
 	add_test(NAME cpc-checkframe-big-endian-3
 			 COMMAND can-parse checkframe 1800 dbc-files/big-endian-1.dbc)
+	
+	add_test(NAME cpc-checkframe-decimal-scale-1
+			 COMMAND can-parse checkframe dbc-files/decimal-scale-1.dbc)
 endif()
