@@ -14,6 +14,10 @@ bool isSeparator(char c) {
     c == ')' || c == '(' || c == ',' || c == ';';
 }
 
+bool isAny(char c, const std::string &chars) {
+  return chars.find(c) != std::string::npos;
+}
+
 bool isDigit(char c) {
   return std::isdigit((unsigned char)c);
 }
@@ -243,7 +247,7 @@ std::string Tokenizer::parseNumber(bool& is_float) {
   char currentChar = getNextChar();
   is_float = false;
 
-  while (isDigit(currentChar) && !isEOF(currentChar)) {
+  while ((isDigit(currentChar) || isAny(currentChar,".e"))&& !isEOF(currentChar)) {
     result += currentChar;
     currentChar = getNextChar();
 
